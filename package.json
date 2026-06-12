@@ -1,0 +1,98 @@
+{
+  "name": "birthday-bubu-wishes",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A modern 3D interactive birthday card application with AI assistance, featuring Bubu & Dudu characters",
+  "author": {
+    "name": "Dipendra",
+    "url": "https://github.com/Dipendra2003"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Dipendra2003/bubu-wishes.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Dipendra2003/bubu-wishes/issues"
+  },
+  "homepage": "https://github.com/Dipendra2003/bubu-wishes#readme",
+  "keywords": [
+    "birthday",
+    "greeting-card",
+    "3d",
+    "ai",
+    "gemini",
+    "react",
+    "typescript",
+    "nodejs",
+    "express",
+    "postgresql"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "node ./node_modules/tsx/dist/cli.mjs server.ts",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "node dist/server.cjs",
+    "clean": "rm -rf dist",
+    "lint": "tsc --noEmit",
+    "migrate": "node ./node_modules/tsx/dist/cli.mjs migrate-add-card-id.ts",
+    "cleanup:users": "node ./node_modules/tsx/dist/cli.mjs cleanup-users.ts",
+    "create:admin": "node ./node_modules/tsx/dist/cli.mjs create-admin.ts",
+    "manage:users": "node ./node_modules/tsx/dist/cli.mjs manage-users.ts",
+    "check:reviews": "node ./node_modules/tsx/dist/cli.mjs check-reviews.ts",
+    "feature:review": "node ./node_modules/tsx/dist/cli.mjs feature-review.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^2.4.0",
+    "@tailwindcss/vite": "^4.1.14",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.1.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "bcryptjs": "^3.0.3",
+    "bullmq": "^5.78.0",
+    "canvas-confetti": "^1.9.4",
+    "cloudinary": "^2.10.0",
+    "clsx": "^2.1.1",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "express": "^4.21.2",
+    "express-rate-limit": "^8.5.2",
+    "framer-motion": "^12.40.0",
+    "helmet": "^8.2.0",
+    "ioredis": "^5.11.1",
+    "jsonwebtoken": "^9.0.3",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.40.0",
+    "multer": "^2.1.1",
+    "nodemailer": "^8.0.10",
+    "pg": "^8.21.0",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "react-markdown": "^10.1.0",
+    "react-player": "^3.4.0",
+    "react-router-dom": "^7.17.0",
+    "recharts": "^3.8.1",
+    "tailwind-merge": "^3.6.0",
+    "uuid": "^14.0.0",
+    "vite": "^6.2.3"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.14.0",
+    "@types/nodemailer": "^8.0.0",
+    "@types/pg": "^8.20.0",
+    "autoprefixer": "^10.4.21",
+    "drizzle-kit": "^0.31.10",
+    "esbuild": "^0.25.0",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.3"
+  }
+}

@@ -1,0 +1,91 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Production build
+build/
+dist/
+*.local
+
+# Testing
+coverage/
+.nyc_output/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# TypeScript
+*.tsbuildinfo
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# Redis dump
+dump.rdb
+
+# Uploads (if storing locally)
+uploads/
+public/uploads/
+
+# Lock files (optional - keep one)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Drizzle migrations (if auto-generated)
+# drizzle/
+
+# Debugging
+.vscode-test/
+.eslintcache
+
+# Mac
+.AppleDouble
+.LSOverride
+
+# Backup files
+*.backup
+*.old
