@@ -18,3 +18,20 @@ export const uploadMedia = async (fileBuffer: Buffer, folder: string, resourceTy
     uploadStream.end(fileBuffer);
   });
 };
+
+export const deleteMedia = async (publicId: string) => {
+  try {
+    // Try to delete as image first
+    let result = await cloudinary.uploader.destroy(publicId);
+    
+    // If not found as image, try as video (for audio files)
+    if (result.result === 'not found') {
+      result = await cloudinary.uploader.destroy(publicId, { resource_type: 'video' });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error("Cloudinary deletion error:", error);
+    throw error;
+  }
+};

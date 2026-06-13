@@ -8,6 +8,13 @@ export const users = pgTable('users', {
   role: text('role').default('client').notNull(),
   verified: boolean('verified').default(false).notNull(),
   suspended: boolean('suspended').default(false).notNull(),
+  // Profile fields - using snake_case to match database columns
+  avatarUrl: text('avatar_url'),
+  bio: text('bio'),
+  phone: text('phone'),
+  birthday: timestamp('birthday'),
+  location: text('location'),
+  timezone: text('timezone'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -26,6 +33,10 @@ export const contacts = pgTable('contacts', {
   name: text('name').notNull(),
   birthday: timestamp('birthday').notNull(),
   email: text('email'),
+  imageUrl: text('image_url'), // Contact profile image
+  relationship: text('relationship'), // 'family', 'friend', 'colleague', 'partner', 'other'
+  notes: text('notes'), // Personal notes about the contact
+  favorite: boolean('favorite').default(false), // Mark as favorite
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -53,5 +64,21 @@ export const cards = pgTable('cards', {
   publicId: text('public_id'),
   mediaType: text('media_type'),
   creatorId: uuid('creator_id').references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const mediaLibrary = pgTable('media_library', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  mediaType: text('media_type').notNull(), // 'image', 'audio', or 'video'
+  mediaUrl: text('media_url').notNull(),
+  publicId: text('public_id'), // Cloudinary public ID for deletion
+  fileName: text('file_name'),
+  fileSize: text('file_size'), // Store as string for flexibility
+  mimeType: text('mime_type'),
+  thumbnail: text('thumbnail'), // For images and videos
+  duration: text('duration'), // For audio and video files
+  usageCount: text('usage_count').default('0'), // Track how many times used
+  lastUsedAt: timestamp('last_used_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

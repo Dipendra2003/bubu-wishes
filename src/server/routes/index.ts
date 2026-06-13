@@ -8,6 +8,8 @@ import { adminRouter } from "./adminRoutes";
 import { wishesRouter } from "./wishesRoutes";
 import { aiRouter } from "./aiRoutes";
 import { reviewsRouter } from "./reviewsRoutes";
+import { mediaLibraryRouter } from "./mediaLibraryRoutes";
+import profileRouter from "./profileRoutes";
 
 export const apiRouter = express.Router();
 
@@ -19,5 +21,7 @@ apiRouter.use("/admin", adminRouter);
 apiRouter.use("/cron", cronRouter);
 apiRouter.use("/wishes", wishesRouter);
 apiRouter.use("/reviews", reviewsRouter);
+apiRouter.use("/media-library", mediaLibraryRouter);
+apiRouter.use("/profile", profileRouter);
 apiRouter.use("/", aiRouter); // Maps to /api/generate-message
 

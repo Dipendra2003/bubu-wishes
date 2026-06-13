@@ -4,6 +4,13 @@ export interface User {
   email: string;
   role: 'client' | 'admin';
   verified?: boolean;
+  avatarUrl?: string;
+  bio?: string;
+  phone?: string;
+  birthday?: string;
+  location?: string;
+  timezone?: string;
+  createdAt?: string;
 }
 
 export interface Wish {

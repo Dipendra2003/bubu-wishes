@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../App';
-import { MessageCircleHeart, LogOut, LayoutDashboard } from 'lucide-react';
+import { MessageCircleHeart, LogOut, LayoutDashboard, User } from 'lucide-react';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -43,6 +43,13 @@ export default function Navbar() {
                 >
                   <LayoutDashboard className="w-4 h-4" />
                   <span className="hidden sm:block">Dashboard</span>
+                </Link>
+                <Link
+                  to="/profile"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-500 hover:text-pink-600 hover:bg-pink-50 rounded-full transition"
+                >
+                  <User className="w-4 h-4" />
+                  <span className="hidden sm:block">Profile</span>
                 </Link>
                 <button
                   onClick={handleLogout}

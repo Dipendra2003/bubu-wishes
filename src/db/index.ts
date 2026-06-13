@@ -4,14 +4,14 @@ import * as schema from './schema';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-// Parse DATABASE_URL and ensure proper SSL mode
+// Parse DATABASE_URL and configure SSL
 const databaseUrl = process.env.DATABASE_URL || '';
-const connectionString = databaseUrl.includes('sslmode=require') 
-  ? databaseUrl.replace('sslmode=require', 'sslmode=verify-full')
-  : databaseUrl;
 
 const pool = new Pool({
-  connectionString,
+  connectionString: databaseUrl,
+  ssl: databaseUrl.includes('sslmode=') ? {
+    rejectUnauthorized: false
+  } : false,
 });
 
 pool.on('error', (err) => {

@@ -17,6 +17,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Video greeting cards
 - Gift registry integration
 
+## [1.2.0] - 2026-06-12
+
+### Added
+- **Media Library Page**: Complete redesign with full-page dedicated view
+  - Beautiful gradient design with professional UI
+  - Large, user-friendly upload zones
+  - Responsive grid layout (2-5 columns based on screen size)
+  - Seamless navigation flow from Card Editor
+  - State preservation during navigation
+  - Auto-return with selected media after selection
+  - Search and filter capabilities
+  - Audio preview with play/pause controls
+  - Edit (rename) and delete functions
+  - Usage statistics tracking
+- Route `/media-library` with authentication protection
+- Navigation integration in CardEditor with Library buttons
+- SessionStorage-based media selection transfer
+
+### Changed
+- Media Library now uses full-page design instead of modal popup
+- CardEditor navigates to dedicated page when Library button is clicked
+- Improved mobile experience with full-screen layout
+- Better visual feedback and hover effects
+
+### Removed
+- Old modal-based MediaLibrary component (replaced with page-based design)
+
+## [1.1.0] - 2026-06-12
+
+### Added
+- **Media Library Feature**: Complete CRUD system for managing photos and voice notes
+  - Upload and store photos (up to 5MB) and audio files (up to 10MB)
+  - Grid view with thumbnails and audio preview
+  - Search and filter by filename and media type
+  - Rename media files with inline editing
+  - Delete media with automatic Cloudinary cleanup
+  - Usage tracking shows how many times each media item has been used
+  - One-click media selection from library to reuse in cards
+  - Seamless integration with Card Editor (Library buttons in photo and audio sections)
+- Database schema for media library with user isolation
+- API endpoints for full CRUD operations on media
+- Media library modal component with responsive design
+- Cloudinary service enhancement with delete functionality
+- Migration script for media library table creation
+- Comprehensive documentation (MEDIA_LIBRARY.md)
+
+### Enhanced
+- CardEditor now includes "Library" buttons for easy access to saved media
+- Cloudinary service extended with media deletion support
+- Server startup includes automatic media library table creation
+
 ## [1.0.0] - 2026-06-12
 
 ### Added

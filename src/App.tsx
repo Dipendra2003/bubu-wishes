@@ -7,6 +7,7 @@ import Signup from './components/pages/Signup';
 import VerifyEmail from './components/pages/VerifyEmail';
 import Dashboard from './components/pages/Dashboard';
 import AdminDashboard from './components/pages/AdminDashboard';
+import ProfilePage from './components/pages/ProfilePage';
 import Navbar from './components/layout/Navbar';
 import CardView from './components/pages/CardView';
 import AboutPage from './components/pages/AboutPage';
@@ -120,6 +121,14 @@ export default function App() {
                   element={
                     <ProtectedRoute roleRequired="client">
                       <Dashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/profile" 
+                  element={
+                    <ProtectedRoute>
+                      <ProfilePage />
                     </ProtectedRoute>
                   } 
                 />

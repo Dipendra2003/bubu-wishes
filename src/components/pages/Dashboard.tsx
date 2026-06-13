@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../App';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CardEditor } from '../CardEditor';
 import { Card3D } from '../Card3D';
 import { PuzzleSequence } from '../PuzzleSequence';
@@ -12,9 +13,12 @@ import { motion } from 'motion/react';
 import { stopTune } from '../../lib/audio';
 import { useToast } from '../ui/ToastProvider';
 import confetti from 'canvas-confetti';
+import { calculateAge, getZodiacSign, daysUntilBirthday, isMilestoneBirthday, getMilestoneBadge, getRelationshipEmoji } from '../../lib/birthdayUtils';
 
 export default function Dashboard() {
   const { user, token } = useAuth();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [wishes, setWishes] = useState<any[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [dashboardTheme, setDashboardTheme] = useState('classic');
@@ -80,18 +84,110 @@ export default function Dashboard() {
     }
   };
 
-  const [activeTab, setActiveTab] = useState<'cards' | 'contacts'>('cards');
+  // Get active tab from URL params, default to 'cards'
+  const activeTab = (searchParams.get('tab') as 'cards' | 'contacts') || 'cards';
+  
+  const setActiveTab = (tab: 'cards' | 'contacts') => {
+    navigate(`/dashboard?tab=${tab}`, { replace: true });
+  };
   const [contacts, setContacts] = useState<any[]>([]);
   const [isAddingContact, setIsAddingContact] = useState(false);
-  const [newContact, setNewContact] = useState({ name: '', email: '', birthday: '' });
+  const [newContact, setNewContact] = useState({ 
+    name: '', 
+    email: '', 
+    birthday: '', 
+    imageUrl: '',
+    relationship: 'friend',
+    notes: '',
+    favorite: false
+  });
+  const [contactImagePreview, setContactImagePreview] = useState<string | null>(null);
+  const [uploadingContactImage, setUploadingContactImage] = useState(false);
+  const [relationshipFilter, setRelationshipFilter] = useState<string>('all');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   // Review State
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+
+  // Delete Confirmation State
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [cardToDelete, setCardToDelete] = useState<string | null>(null);
+
+  // Contact Management State
+  const [contactToDelete, setContactToDelete] = useState<string | null>(null);
+  const [deleteContactConfirmOpen, setDeleteContactConfirmOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<any>(null);
+  const [contactSearchQuery, setContactSearchQuery] = useState('');
 
   useEffect(() => {
     fetchWishes();
     fetchContacts();
   }, []);
+
+  // Handle URL parameters on mount and when they change
+  useEffect(() => {
+    const createParam = searchParams.get('create');
+    const editParam = searchParams.get('edit');
+    
+    if (createParam === 'true') {
+      // Restore create mode from URL
+      if (!isCreating) {
+        setIsCreating(true);
+      }
+      setEditingCardId(null);
+      
+      // Try to restore draft only if cardData is empty
+      if (!cardData.to && !cardData.message) {
+        const draft = localStorage.getItem('magic_card_draft');
+        if (draft) {
+          try {
+            const parsedDraft = JSON.parse(draft);
+            setCardData(parsedDraft);
+          } catch (e) {
+            console.error('Failed to parse draft', e);
+          }
+        }
+      }
+    } else if (editParam) {
+      // Restore edit mode from URL
+      if (!isCreating && wishes.length > 0) {
+        const cardToEdit = wishes.find(w => w.id === editParam);
+        if (cardToEdit) {
+          let parsedData = cardToEdit.cardData;
+          if (typeof parsedData === 'string') {
+            try {
+              parsedData = JSON.parse(parsedData);
+            } catch (e) {
+              console.error("Failed to parse cardData", e);
+              parsedData = null;
+            }
+          }
+          
+          if (parsedData) {
+            setCardData(parsedData);
+          } else {
+            setCardData({
+              to: cardToEdit.recipient,
+              from: user?.name || '',
+              message: cardToEdit.message,
+              theme: cardToEdit.theme || 'party',
+              music: 'happy_birthday',
+              enablePuzzles: true,
+              puzzleLanguage: 'english'
+            });
+          }
+          setEditingCardId(editParam);
+          setIsCreating(true);
+        }
+      }
+    } else {
+      // No URL params, ensure we're in dashboard view
+      if (isCreating && !isPreview) {
+        setIsCreating(false);
+        setEditingCardId(null);
+      }
+    }
+  }, [searchParams, wishes.length]);
 
   const fetchContacts = async () => {
     try {
@@ -118,29 +214,102 @@ export default function Dashboard() {
   const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/contacts', {
-        method: 'POST',
+      const url = editingContact ? `/api/contacts/${editingContact.id}` : '/api/contacts';
+      const method = editingContact ? 'PUT' : 'POST';
+      
+      // Format birthday: always use year 2000 for recurring birthdays
+      const contactData = {
+        ...newContact,
+        birthday: newContact.birthday ? `2000-${newContact.birthday.substring(5)}` : newContact.birthday
+      };
+      
+      const res = await fetch(url, {
+        method,
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(newContact)
+        body: JSON.stringify(contactData)
       });
+      
       if (res.ok) {
-        toast('Contact added successfully!', 'success');
+        toast(editingContact ? 'Contact updated successfully!' : 'Contact added successfully!', 'success');
         setIsAddingContact(false);
-        setNewContact({ name: '', email: '', birthday: '' });
+        setEditingContact(null);
+        setNewContact({ 
+          name: '', 
+          email: '', 
+          birthday: '', 
+          imageUrl: '',
+          relationship: 'friend',
+          notes: '',
+          favorite: false
+        });
+        setContactImagePreview(null);
         fetchContacts();
       } else {
          const data = await res.json();
-         toast(data.error || 'Failed to add contact', 'error');
+         console.error('Contact save error:', data);
+         toast(data.error || `Failed to ${editingContact ? 'update' : 'add'} contact`, 'error');
       }
     } catch(e) {
-      toast('Failed to add contact', 'error');
+      console.error('Contact save exception:', e);
+      toast(`Failed to ${editingContact ? 'update' : 'add'} contact`, 'error');
+    }
+  };
+
+  const handleContactImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast('Please upload an image file', 'error');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast('Image size should be less than 5MB', 'error');
+      return;
+    }
+
+    setUploadingContactImage(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', 'image'); // Add type parameter for upload controller
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setNewContact({ ...newContact, imageUrl: data.url });
+        setContactImagePreview(data.url);
+        toast('Image uploaded successfully!', 'success');
+      } else {
+        const error = await res.json();
+        toast(error.error || 'Failed to upload image', 'error');
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      toast('Failed to upload image', 'error');
+    } finally {
+      setUploadingContactImage(false);
     }
   };
 
   const handleDeleteContact = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this contact?")) return;
+    setContactToDelete(id);
+    setDeleteContactConfirmOpen(true);
+  };
+
+  const confirmDeleteContact = async () => {
+    if (!contactToDelete) return;
+    
     try {
-      const res = await fetch(`/api/contacts/${id}`, {
+      const res = await fetch(`/api/contacts/${contactToDelete}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -150,8 +319,99 @@ export default function Dashboard() {
       }
     } catch(e) {
       toast('Failed to delete contact', 'error');
+    } finally {
+      setDeleteContactConfirmOpen(false);
+      setContactToDelete(null);
     }
   };
+
+  const startEditContact = (contact: any) => {
+    setEditingContact(contact);
+    
+    // Format birthday for date input (MM-DD only, using current/next year)
+    const birthdayDate = new Date(contact.birthday);
+    const month = String(birthdayDate.getMonth() + 1).padStart(2, '0');
+    const day = String(birthdayDate.getDate()).padStart(2, '0');
+    const currentYear = new Date().getFullYear();
+    const formattedBirthday = `${currentYear}-${month}-${day}`;
+    
+    setNewContact({
+      name: contact.name,
+      email: contact.email || '',
+      birthday: formattedBirthday,
+      imageUrl: contact.imageUrl || '',
+      relationship: contact.relationship || 'friend',
+      notes: contact.notes || '',
+      favorite: contact.favorite || false
+    });
+    setContactImagePreview(contact.imageUrl || null);
+    setIsAddingContact(true);
+  };
+
+  const cancelContactForm = () => {
+    setIsAddingContact(false);
+    setEditingContact(null);
+    setNewContact({ 
+      name: '', 
+      email: '', 
+      birthday: '', 
+      imageUrl: '',
+      relationship: 'friend',
+      notes: '',
+      favorite: false
+    });
+    setContactImagePreview(null);
+  };
+
+  const toggleFavorite = async (contactId: string, currentFavorite: boolean) => {
+    try {
+      const contact = contacts.find(c => c.id === contactId);
+      if (!contact) return;
+
+      const res = await fetch(`/api/contacts/${contactId}`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...contact,
+          favorite: !currentFavorite
+        })
+      });
+
+      if (res.ok) {
+        fetchContacts();
+        toast(currentFavorite ? 'Removed from favorites' : 'Added to favorites', 'success');
+      }
+    } catch (e) {
+      toast('Failed to update favorite', 'error');
+    }
+  };
+
+  const filteredContacts = contacts
+    .filter(contact => {
+      // Text search filter
+      const searchMatch = contact.name.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
+        (contact.email && contact.email.toLowerCase().includes(contactSearchQuery.toLowerCase()));
+      
+      // Relationship filter
+      const relationshipMatch = relationshipFilter === 'all' || contact.relationship === relationshipFilter;
+      
+      // Favorites filter
+      const favoriteMatch = !showFavoritesOnly || contact.favorite;
+      
+      return searchMatch && relationshipMatch && favoriteMatch;
+    })
+    .sort((a, b) => {
+      // Sort favorites first, then by upcoming birthday
+      if (a.favorite && !b.favorite) return -1;
+      if (!a.favorite && b.favorite) return 1;
+      
+      const daysA = daysUntilBirthday(a.birthday);
+      const daysB = daysUntilBirthday(b.birthday);
+      return daysA - daysB;
+    });
 
   const fetchWishes = async () => {
     setIsLoadingWishes(true); // Start loading
@@ -257,6 +517,7 @@ export default function Dashboard() {
         });
     }
     setEditingCardId(wish.id);
+    navigate(`/dashboard?edit=${wish.id}`);
     setIsCreating(true);
   };
 
@@ -274,6 +535,7 @@ export default function Dashboard() {
         puzzleLanguage: 'english'
     });
     setEditingCardId(null);
+    navigate('/dashboard?create=true');
     setIsCreating(true);
   };
 
@@ -310,9 +572,15 @@ export default function Dashboard() {
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this magic card?")) return;
+    setCardToDelete(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!cardToDelete) return;
+    
     try {
-      await fetch(`/api/wishes/${id}`, {
+      await fetch(`/api/wishes/${cardToDelete}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -320,6 +588,9 @@ export default function Dashboard() {
       toast('Magic card deleted', 'info');
     } catch (err) {
       toast('Failed to delete card', 'error');
+    } finally {
+      setDeleteConfirmOpen(false);
+      setCardToDelete(null);
     }
   };
 
@@ -334,6 +605,7 @@ export default function Dashboard() {
     setIsCreating(false);
     setIsPreview(false);
     setEditingCardId(null);
+    navigate('/dashboard');
     stopTune();
   };
 
@@ -544,6 +816,102 @@ export default function Dashboard() {
         <ReviewForm onClose={() => setIsReviewOpen(false)} />
       )}
 
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setDeleteConfirmOpen(false)}>
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Icon */}
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-2xl font-black text-gray-900 text-center mb-3">Delete This Card?</h3>
+            
+            {/* Description */}
+            <p className="text-gray-600 text-center mb-8 font-medium leading-relaxed">
+              Are you sure you want to delete this magic card? This action cannot be undone and the card link will no longer work.
+            </p>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setDeleteConfirmOpen(false);
+                  setCardToDelete(null);
+                }}
+                className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full font-bold transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-full font-bold shadow-lg shadow-red-200/50 transition"
+              >
+                Delete
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete Contact Confirmation Modal */}
+      {deleteContactConfirmOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setDeleteContactConfirmOpen(false)}>
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Icon */}
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-2xl font-black text-gray-900 text-center mb-3">Delete This Contact?</h3>
+            
+            {/* Description */}
+            <p className="text-gray-600 text-center mb-8 font-medium leading-relaxed">
+              Are you sure you want to delete this contact? All birthday reminders for this person will be removed.
+            </p>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setDeleteContactConfirmOpen(false);
+                  setContactToDelete(null);
+                }}
+                className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full font-bold transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteContact}
+                className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-full font-bold shadow-lg shadow-red-200/50 transition"
+              >
+                Delete
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {nextBirthdayData && (
         <div className="bg-pink-100 border border-pink-200 rounded-2xl p-4 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between shadow-sm gap-4">
           <div className="flex items-center gap-4">
@@ -676,66 +1044,308 @@ export default function Dashboard() {
       {activeTab === 'contacts' && (
         <div className="mt-4">
            {!isAddingContact ? (
-             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-gray-800">Your Contacts</h3>
-                <button 
-                  onClick={() => setIsAddingContact(true)}
-                  className={`px-4 py-2 ${themeStyle.button} text-white rounded-full font-bold text-sm shadow-sm transition`}
-                >
-                  + Add Contact
-                </button>
+             <div className="space-y-6">
+               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div className="flex-1 w-full sm:max-w-md">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search contacts by name or email..."
+                        value={contactSearchQuery}
+                        onChange={(e) => setContactSearchQuery(e.target.value)}
+                        className="w-full pl-12 pr-4 py-3 bg-white/60 backdrop-blur-sm border border-white/50 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-300 focus:bg-white transition shadow-sm font-medium"
+                      />
+                      <svg className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setIsAddingContact(true)}
+                    className={`w-full sm:w-auto px-6 py-3 ${themeStyle.button} text-white rounded-full font-bold shadow-md transition whitespace-nowrap`}
+                  >
+                    + Add Contact
+                  </button>
+               </div>
+
+               {/* Filters */}
+               <div className="flex flex-wrap gap-3 items-center">
+                 <button
+                   onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                   className={`px-4 py-2 rounded-full font-bold text-sm transition ${
+                     showFavoritesOnly 
+                       ? 'bg-yellow-500 text-white shadow-md' 
+                       : 'bg-white/60 text-gray-600 hover:bg-white border border-white/50'
+                   }`}
+                 >
+                   ⭐ {showFavoritesOnly ? 'Favorites Only' : 'Show All'}
+                 </button>
+
+                 <div className="flex bg-white/60 backdrop-blur-sm rounded-full border border-white/50 p-1 gap-1">
+                   {['all', 'family', 'friend', 'colleague', 'partner'].map(rel => (
+                     <button
+                       key={rel}
+                       onClick={() => setRelationshipFilter(rel)}
+                       className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${
+                         relationshipFilter === rel
+                           ? themeStyle.button + ' text-white shadow-sm'
+                           : 'text-gray-600 hover:bg-white/80'
+                       }`}
+                     >
+                       {rel === 'all' ? 'All' : rel.charAt(0).toUpperCase() + rel.slice(1) + 's'}
+                     </button>
+                   ))}
+                 </div>
+               </div>
              </div>
            ) : (
              <form onSubmit={handleAddContact} className="bg-white/80 rounded-2xl p-6 shadow-sm border border-white mb-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-4">New Contact</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                  <div>
-                     <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Name</label>
-                     <input type="text" required value={newContact.name} onChange={e => setNewContact({...newContact, name: e.target.value})} className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-300" placeholder="John Doe" />
+                <h3 className="text-lg font-bold text-gray-800 mb-4">{editingContact ? 'Edit Contact' : 'New Contact'}</h3>
+                
+                {/* Image Upload Section */}
+                <div className="mb-6 flex flex-col items-center">
+                  <div className="relative mb-3">
+                    {contactImagePreview ? (
+                      <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg">
+                        <img src={contactImagePreview} alt="Contact" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-pink-400 to-rose-400 flex items-center justify-center text-white text-3xl font-bold shadow-lg border-4 border-white">
+                        {newContact.name ? newContact.name.charAt(0).toUpperCase() : '👤'}
+                      </div>
+                    )}
+                    <label 
+                      htmlFor="contact-image-upload" 
+                      className="absolute bottom-0 right-0 w-8 h-8 bg-pink-500 hover:bg-pink-600 rounded-full flex items-center justify-center cursor-pointer shadow-lg transition"
+                    >
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </label>
+                    <input
+                      id="contact-image-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleContactImageUpload}
+                      className="hidden"
+                      disabled={uploadingContactImage}
+                    />
                   </div>
+                  {uploadingContactImage && (
+                    <p className="text-sm text-pink-600 font-medium">Uploading image...</p>
+                  )}
+                  <p className="text-xs text-gray-500 text-center">Click camera icon to upload photo<br />(Max 5MB)</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div>
+                     <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Name *</label>
+                     <input 
+                       type="text" 
+                       required 
+                       value={newContact.name} 
+                       onChange={e => setNewContact({...newContact, name: e.target.value})} 
+                       className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-300" 
+                       placeholder="John Doe" 
+                     />
+                  </div>
+                  
+                  <div>
+                     <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Birthday * (Month & Day)</label>
+                     <input 
+                       type="date" 
+                       required 
+                       value={newContact.birthday} 
+                       onChange={e => setNewContact({...newContact, birthday: e.target.value})} 
+                       className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-300" 
+                       placeholder="Select month and day"
+                       title="Select birthday month and day (year will be ignored)"
+                     />
+                     <p className="text-xs text-gray-500 mt-1">Year is ignored - birthday repeats annually</p>
+                  </div>
+
                   <div>
                      <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Email <span className="text-gray-400 normal-case">(optional)</span></label>
-                     <input type="email" value={newContact.email} onChange={e => setNewContact({...newContact, email: e.target.value})} className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-300" placeholder="john@example.com" />
+                     <input 
+                       type="email" 
+                       value={newContact.email} 
+                       onChange={e => setNewContact({...newContact, email: e.target.value})} 
+                       className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-300" 
+                       placeholder="john@example.com" 
+                     />
                   </div>
+                  
                   <div>
-                     <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Birthday</label>
-                     <input type="date" required value={newContact.birthday} onChange={e => setNewContact({...newContact, birthday: e.target.value})} className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-300" />
+                     <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Relationship</label>
+                     <select 
+                       value={newContact.relationship} 
+                       onChange={e => setNewContact({...newContact, relationship: e.target.value})}
+                       className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                     >
+                       <option value="family">👨‍👩‍👧‍👦 Family</option>
+                       <option value="friend">🤝 Friend</option>
+                       <option value="colleague">💼 Colleague</option>
+                       <option value="partner">❤️ Partner</option>
+                       <option value="other">👤 Other</option>
+                     </select>
                   </div>
                 </div>
+
+                <div className="mb-4">
+                  <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Notes <span className="text-gray-400 normal-case">(optional)</span></label>
+                  <textarea
+                    value={newContact.notes}
+                    onChange={e => setNewContact({...newContact, notes: e.target.value})}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-300 min-h-[80px]"
+                    placeholder="Gift preferences, favorite things, etc..."
+                  />
+                </div>
+
+                <div className="mb-4 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="favorite-checkbox"
+                    checked={newContact.favorite}
+                    onChange={e => setNewContact({...newContact, favorite: e.target.checked})}
+                    className="w-5 h-5 text-pink-500 border-gray-300 rounded focus:ring-pink-300"
+                  />
+                  <label htmlFor="favorite-checkbox" className="text-sm font-medium text-gray-700 cursor-pointer">
+                    ⭐ Mark as favorite
+                  </label>
+                </div>
+
                 <div className="flex justify-end gap-3">
-                  <button type="button" onClick={() => setIsAddingContact(false)} className="px-4 py-2 text-gray-500 font-bold hover:text-gray-800 transition">Cancel</button>
-                  <button type="submit" className={`px-4 py-2 ${themeStyle.button} text-white font-bold rounded-xl shadow-sm transition`}>Save Contact</button>
+                  <button type="button" onClick={cancelContactForm} className="px-4 py-2 text-gray-500 font-bold hover:text-gray-800 transition">Cancel</button>
+                  <button type="submit" disabled={uploadingContactImage} className={`px-6 py-2 ${themeStyle.button} text-white font-bold rounded-xl shadow-sm transition disabled:opacity-50`}>
+                    {editingContact ? 'Update Contact' : 'Save Contact'}
+                  </button>
                 </div>
              </form>
            )}
 
-           {contacts.length === 0 && !isAddingContact ? (
-             <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-8 text-center border border-white">
-                <p className="text-gray-500 font-medium">You haven't saved any contacts yet. We'll send you email reminders when their birthdays are coming up!</p>
+           {filteredContacts.length === 0 && !isAddingContact ? (
+             <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-8 text-center border border-white mt-6">
+                {contactSearchQuery ? (
+                  <>
+                    <div className="text-4xl mb-3">🔍</div>
+                    <h3 className="text-lg font-bold text-gray-800 mb-2">No contacts found</h3>
+                    <p className="text-gray-500 font-medium">No contacts match your search "{contactSearchQuery}"</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-4xl mb-3">👥</div>
+                    <h3 className="text-lg font-bold text-gray-800 mb-2">No contacts yet</h3>
+                    <p className="text-gray-500 font-medium">Add contacts and we'll send you email reminders when their birthdays are coming up!</p>
+                  </>
+                )}
              </div>
            ) : (
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {contacts.map(c => {
-                   const nextBday = new Date(c.birthday);
-                   nextBday.setFullYear(new Date().getFullYear());
-                   if (nextBday < new Date()) nextBday.setFullYear(new Date().getFullYear() + 1);
-                   const daysToBday = Math.ceil((nextBday.getTime() - new Date().getTime()) / (1000 * 3600 * 24));
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                {filteredContacts.map(c => {
+                   const days = daysUntilBirthday(c.birthday);
+                   const age = calculateAge(c.birthday);
+                   const zodiac = getZodiacSign(c.birthday);
+                   const milestone = getMilestoneBadge(c.birthday);
                    
                    return (
-                     <div key={c.id} className="bg-white/80 rounded-2xl p-4 shadow-sm border border-white flex justify-between items-start group">
-                        <div>
-                           <h4 className="font-bold text-gray-800">{c.name}</h4>
-                           <div className="text-xs text-gray-500 font-medium mt-1">
-                             <span className="bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full inline-block mr-2">
-                               {new Date(c.birthday).toLocaleDateString(undefined, {month: 'long', day: 'numeric'})}
-                             </span>
-                             {daysToBday === 0 ? <span className="text-orange-500 font-bold">Today!</span> : <span>in {daysToBday} days</span>}
-                           </div>
-                           {c.email && <div className="text-xs text-gray-400 mt-2">{c.email}</div>}
-                        </div>
-                        <button onClick={() => handleDeleteContact(c.id)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition">
-                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                     <div key={c.id} className="bg-white/80 rounded-2xl p-5 shadow-sm border border-white hover:shadow-md transition group relative">
+                        {/* Favorite Star */}
+                        <button
+                          onClick={() => toggleFavorite(c.id, c.favorite)}
+                          className="absolute top-3 right-3 text-2xl transition-transform hover:scale-125"
+                        >
+                          {c.favorite ? '⭐' : '☆'}
                         </button>
+
+                        {/* Milestone Badge */}
+                        {milestone && (
+                          <div className="absolute top-3 left-3 bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs font-black px-3 py-1 rounded-full shadow-md">
+                            🎊 {milestone}
+                          </div>
+                        )}
+
+                        <div className="flex items-start justify-between mb-3 mt-8">
+                          <div className="flex items-center gap-3">
+                            {c.imageUrl ? (
+                              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-pink-300 shadow-md flex-shrink-0">
+                                <img src={c.imageUrl} alt={c.name} className="w-full h-full object-cover" />
+                              </div>
+                            ) : (
+                              <div className="w-14 h-14 bg-gradient-to-br from-pink-400 to-rose-400 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md flex-shrink-0">
+                                {c.name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <div>
+                              <h4 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                                {c.name}
+                                {c.relationship && (
+                                  <span className="text-sm">{getRelationshipEmoji(c.relationship)}</span>
+                                )}
+                              </h4>
+                              <div className="flex items-center gap-2 text-xs text-gray-500">
+                                <span>{age} years</span>
+                                <span>•</span>
+                                <span title={zodiac.dates}>{zodiac.emoji} {zodiac.name}</span>
+                              </div>
+                              {c.email && <p className="text-xs text-gray-500 font-medium mt-0.5">{c.email}</p>}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Notes Preview */}
+                        {c.notes && (
+                          <div className="mb-3 bg-gray-50 rounded-lg p-2">
+                            <p className="text-xs text-gray-600 italic line-clamp-2">{c.notes}</p>
+                          </div>
+                        )}
+
+                        {/* Birthday Info */}
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="flex-1 bg-pink-50 rounded-xl px-3 py-2">
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="text-xl">🎂</span>
+                              <div>
+                                <p className="font-bold text-pink-600 text-xs">
+                                  {new Date(c.birthday).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}
+                                </p>
+                                <p className="text-gray-600 text-xs font-medium">
+                                  {days === 0 ? (
+                                    <span className="text-orange-600 font-bold">🎉 Today!</span>
+                                  ) : days === 1 ? (
+                                    <span className="text-orange-600 font-bold">Tomorrow!</span>
+                                  ) : days <= 7 ? (
+                                    <span className="text-orange-500 font-bold">in {days} days 🔥</span>
+                                  ) : (
+                                    <span>in {days} days</span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => startEditContact(c)}
+                            className="flex-1 py-2 text-gray-600 hover:text-white hover:bg-gray-500 rounded-xl font-bold text-xs transition border border-gray-200 flex items-center justify-center gap-1"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteContact(c.id)}
+                            className="flex-1 py-2 text-red-500 hover:text-white hover:bg-red-500 rounded-xl font-bold text-xs transition border border-red-200 flex items-center justify-center gap-1"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                          </button>
+                        </div>
                      </div>
                    );
                 })}

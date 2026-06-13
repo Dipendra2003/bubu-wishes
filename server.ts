@@ -50,6 +50,32 @@ async function startServer() {
       );
     `);
 
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "media_library" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "user_id" uuid NOT NULL REFERENCES "users"("id") ON DELETE cascade,
+        "media_type" text NOT NULL,
+        "media_url" text NOT NULL,
+        "public_id" text,
+        "file_name" text,
+        "file_size" text,
+        "mime_type" text,
+        "thumbnail" text,
+        "duration" text,
+        "usage_count" text DEFAULT '0',
+        "last_used_at" timestamp,
+        "created_at" timestamp NOT NULL DEFAULT now()
+      );
+    `);
+
+    // Add profile fields to users table
+    await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "avatar_url" text;`);
+    await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "bio" text;`);
+    await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "phone" text;`);
+    await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "birthday" timestamp;`);
+    await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "location" text;`);
+    await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "timezone" text;`);
+
     // Seed featured reviews for demo
     try {
       const usersData: any = await db.execute(sql`SELECT id FROM users LIMIT 1`);
@@ -83,9 +109,29 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
+    
+    // Fallback for all non-API routes in development (SPA support)
+    app.use('*', async (req, res, next) => {
+      const url = req.originalUrl;
+      try {
+        // Read and transform index.html
+        let template = await vite.transformIndexHtml(url, 
+          await (await import('fs')).promises.readFile(
+            path.resolve(__dirname, 'index.html'),
+            'utf-8'
+          )
+        );
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
+    
+    // Fallback for all routes in production (SPA support)
     app.get('*', (_req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });

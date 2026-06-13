@@ -117,18 +117,21 @@ export default function LandingPage() {
                 initial={{ y: 30, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.1 }}
-                className="text-5xl sm:text-6xl lg:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-br from-pink-600 to-rose-400 tracking-tight mb-6 leading-tight pb-2"
+                className="text-4xl sm:text-5xl lg:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-br from-pink-600 via-rose-500 to-rose-400 tracking-tight mb-6 leading-[1.1] pb-2 font-display"
+                style={{ textShadow: '0 0 80px rgba(236, 72, 153, 0.3)' }}
               >
-                Create Magic For<br /> Your Favorite People
+                Create Magic<br />
+                For Your<br className="sm:hidden" /> Favorite People
               </motion.h1>
               
               <motion.p 
                 initial={{ y: 30, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.2 }}
-                className="text-lg sm:text-xl text-pink-700/80 mb-10 max-w-xl font-medium"
+                className="text-base sm:text-lg lg:text-xl text-gray-700/90 mb-10 max-w-xl font-medium leading-relaxed"
+                style={{ lineHeight: '1.6' }}
               >
-                Design adorable, interactive 3D greeting cards featuring Bubu & Dudu. Complete with music, puzzles, countdown locks, and voice messages.
+                Design adorable, interactive 3D greeting cards featuring <span className="font-bold text-pink-600">Bubu & Dudu</span>. Complete with music, puzzles, countdown locks, and voice messages.
               </motion.p>
               
               <motion.div 
@@ -139,11 +142,11 @@ export default function LandingPage() {
               >
                 <Link 
                   to={user ? (user.role === 'admin' ? '/admin' : '/dashboard') : '/signup'} 
-                  className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-pink-500 to-rose-400 text-white font-bold rounded-full shadow-xl shadow-pink-200/50 hover:shadow-2xl hover:shadow-pink-300/60 transition transform hover:-translate-y-1 text-lg flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-pink-500 to-rose-400 text-white font-black rounded-full shadow-xl shadow-pink-200/50 hover:shadow-2xl hover:shadow-pink-300/60 transition transform hover:-translate-y-1 text-lg flex items-center justify-center gap-2 font-display"
                 >
                   {user ? 'Go to Dashboard' : 'Start Creating Free'} <ChevronRight className="w-5 h-5" />
                 </Link>
-                {!user && <p className="text-sm font-bold text-pink-500/80 hidden sm:block">No credit card required</p>}
+                {!user && <p className="text-sm font-bold text-pink-500/80 hidden sm:block">No credit card required ✨</p>}
               </motion.div>
             </div>
 
@@ -191,8 +194,8 @@ export default function LandingPage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6 }}
               >
-                <h2 className="text-4xl sm:text-5xl font-black text-gray-900 mb-4 tracking-tight">Send Magic In 3 Steps</h2>
-                <p className="text-lg sm:text-xl text-gray-600 font-medium mb-20 max-w-3xl mx-auto">It only takes a minute to create a moment they will remember forever.</p>
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 mb-4 tracking-tight font-display leading-tight">Send Magic In 3 Steps</h2>
+                <p className="text-base sm:text-lg lg:text-xl text-gray-600 font-medium mb-20 max-w-3xl mx-auto leading-relaxed">It only takes a minute to create a moment they'll remember forever.</p>
               </motion.div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
@@ -226,10 +229,10 @@ export default function LandingPage() {
                          </div>
                          
                          {/* Title */}
-                         <h3 className="text-2xl font-black text-gray-900 mb-4">{s.title}</h3>
+                         <h3 className="text-xl font-black text-gray-900 mb-4 font-display">{s.title}</h3>
                          
                          {/* Description */}
-                         <p className="text-gray-600 font-medium leading-relaxed">{s.desc}</p>
+                         <p className="text-gray-600 font-medium leading-relaxed text-sm sm:text-base">{s.desc}</p>
                          
                          {/* Connector line for desktop */}
                          {i < 2 && (
@@ -256,8 +259,8 @@ export default function LandingPage() {
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
             >
-              <h2 className="text-4xl sm:text-5xl font-black text-gray-900 mb-4 tracking-tight">Themes For Every Occasion</h2>
-              <p className="text-lg sm:text-xl text-gray-600 font-medium max-w-3xl mx-auto">Not just for birthdays! Celebrate anniversaries, holidays, or just send a random smile.</p>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 mb-4 tracking-tight font-display leading-tight">Themes For Every Occasion</h2>
+              <p className="text-base sm:text-lg lg:text-xl text-gray-600 font-medium max-w-3xl mx-auto leading-relaxed">Not just for birthdays! Celebrate anniversaries, holidays, or just send a random smile.</p>
             </motion.div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -282,7 +285,7 @@ export default function LandingPage() {
                        <div className="w-44 h-44 mb-4 transform group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300">
                           {th.component}
                        </div>
-                       <h4 className="font-black text-gray-900 text-lg group-hover:text-pink-600 transition-colors">{th.name}</h4>
+                       <h4 className="font-black text-gray-900 text-lg group-hover:text-pink-600 transition-colors font-display">{th.name}</h4>
                     </div>
                  </motion.div>
                ))}
@@ -320,8 +323,8 @@ export default function LandingPage() {
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
             >
-              <h2 className="text-4xl sm:text-5xl font-black text-gray-900 mb-4">Everything You Need To Impress</h2>
-              <p className="text-gray-600 font-medium text-lg sm:text-xl max-w-3xl mx-auto">Detailed features that make your greetings stand out from the ordinary.</p>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 mb-4 font-display leading-tight">Everything You Need To Impress</h2>
+              <p className="text-gray-600 font-medium text-base sm:text-lg lg:text-xl max-w-3xl mx-auto leading-relaxed">Detailed features that make your greetings stand out from the ordinary.</p>
             </motion.div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -352,10 +355,10 @@ export default function LandingPage() {
                     </div>
                     
                     {/* Title */}
-                    <h3 className="text-xl font-black text-gray-900 mb-3 group-hover:text-pink-600 transition-colors">{ft.title}</h3>
+                    <h3 className="text-lg font-black text-gray-900 mb-3 group-hover:text-pink-600 transition-colors font-display">{ft.title}</h3>
                     
                     {/* Description */}
-                    <p className="text-gray-600 leading-relaxed font-medium">{ft.desc}</p>
+                    <p className="text-gray-600 leading-relaxed font-medium text-sm sm:text-base">{ft.desc}</p>
                     
                     {/* Decorative corner element */}
                     <div className="absolute top-4 right-4 w-2 h-2 bg-pink-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -381,7 +384,7 @@ export default function LandingPage() {
                viewport={{ once: true }}
                transition={{ duration: 0.6 }}
              >
-                <h2 className="text-4xl sm:text-5xl font-black mb-6">Loved By Thousands</h2>
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-6 font-display leading-tight">Loved By Thousands</h2>
                 <div className="flex justify-center gap-2 text-yellow-300 mb-4">
                    {[...Array(5)].map((_, i) => (
                      <motion.div
@@ -395,7 +398,7 @@ export default function LandingPage() {
                      </motion.div>
                    ))}
                 </div>
-                <p className="font-bold text-xl text-pink-100">Over 50,000 magic moments sent worldwide.</p>
+                <p className="font-bold text-lg sm:text-xl text-pink-100">Over 50,000 magic moments sent worldwide.</p>
              </motion.div>
              
              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -453,11 +456,11 @@ export default function LandingPage() {
              viewport={{ once: true }}
              transition={{ duration: 0.8 }}
            >
-              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 mb-6 tracking-tight">
-                {user ? 'Ready to Create Your Next Card?' : 'Ready to make someone smile?'}
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 mb-6 tracking-tight font-display leading-tight">
+                {user ? 'Ready to Create Your Next Card?' : 'Ready to Make Someone Smile?'}
               </h2>
-              <p className="text-xl sm:text-2xl text-gray-600 font-medium mb-12 max-w-2xl mx-auto">
-                {user ? 'Head to your dashboard and start creating magic.' : 'Create an account for free and start drafting your first magic card.'}
+              <p className="text-lg sm:text-xl lg:text-2xl text-gray-600 font-medium mb-12 max-w-2xl mx-auto leading-relaxed">
+                {user ? 'Head to your dashboard and start creating magic.' : 'Create an account for free and start crafting your first magic card.'}
               </p>
               
               <motion.div
@@ -466,7 +469,7 @@ export default function LandingPage() {
               >
                 <Link 
                   to={user ? (user.role === 'admin' ? '/admin' : '/dashboard') : '/signup'} 
-                  className="inline-flex items-center gap-3 px-12 py-6 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 text-white font-black rounded-full shadow-2xl shadow-pink-300/50 hover:shadow-3xl hover:shadow-pink-400/60 transition-all duration-300 text-xl group"
+                  className="inline-flex items-center gap-3 px-10 py-5 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 text-white font-black rounded-full shadow-2xl shadow-pink-300/50 hover:shadow-3xl hover:shadow-pink-400/60 transition-all duration-300 text-lg font-display group"
                 >
                   {user ? 'Go to Dashboard' : 'Create Your First Card Now'}
                   <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
