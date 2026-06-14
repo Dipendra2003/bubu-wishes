@@ -17,6 +17,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Video greeting cards
 - Gift registry integration
 
+## [1.3.0] - 2026-06-13
+
+### Added
+- **Birthday Email & Reminder System**: Complete automated reminder system
+  - Automated birthday reminders sent X days before (1, 3, 7, 14 days configurable)
+  - Birthday wish emails sent directly to contacts on their birthday
+  - BullMQ repeatable jobs scheduler (runs every hour)
+  - Timezone-aware scheduling
+  - Smart deduplication (prevents duplicate reminders)
+  - Card detection (skips reminder if card already created)
+  - Beautiful responsive email templates matching app design
+  - Reminder history tracking
+  - Email delivery logs with retry mechanism
+  - User preferences management
+  - Email Preferences UI in Profile page
+  - Production-ready with error handling and monitoring
+
+### Database
+- Added `user_preferences` table for email settings
+- Added `reminder_history` table for audit trail
+- Added `email_logs` table for delivery tracking
+- Added `card_share_tokens` table for secure sharing (future use)
+- Created performance indexes on contacts, cards, and new tables
+- Migration script: `0005_add_reminder_system.sql`
+
+### API
+- `GET /api/preferences` - Get user email preferences
+- `PUT /api/preferences` - Update email preferences
+- `POST /api/preferences/reset` - Reset to defaults
+- Updated `/api/cron/send-birthday-reminders` - Enhanced with new reminder service
+- `POST /api/cron/trigger-birthday-check` - Manual trigger via queue
+- `GET /api/cron/scheduler-status` - Scheduler metrics
+
+### Services
+- `reminderService.ts` - Core birthday reminder logic
+- `schedulerService.ts` - BullMQ scheduler initialization
+- Birthday worker for processing reminders
+- Enhanced email worker with logging
+- Beautiful email templates for reminders and wishes
+
+### Frontend
+- Email Preferences component with full settings UI
+- Profile page now has tabs (Profile Settings + Email Preferences)
+- Reminder day selection (1, 3, 7, 14 days)
+- Reminder time picker
+- Birthday wish email toggle
+- Save/Reset preferences
+
+### Enhanced
+- Email service with new birthday templates
+- Server startup initializes scheduler automatically
+- Graceful shutdown handling
+- Email queue integration with logging
+
+### Documentation
+- Complete Birthday Reminder System documentation
+- API endpoint documentation
+- Deployment guide
+- Troubleshooting guide
+
 ## [1.2.0] - 2026-06-12
 
 ### Added

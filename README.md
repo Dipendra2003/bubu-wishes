@@ -31,7 +31,9 @@ Birthday Bubu Wishes is a modern full-stack web application that allows users to
 - 🔐 **Secure Authentication** - JWT-based auth with email verification
 - 📊 **Admin Dashboard** - User management and analytics
 - ⭐ **Reviews System** - Users can leave feedback and reviews
-- 📧 **Email Notifications** - Automated birthday reminders
+- 📧 **Birthday Reminders** - Automated email reminders before birthdays (NEW!)
+- 🎂 **Birthday Wishes** - Auto-send wishes to contacts on their birthday (NEW!)
+- ⚙️ **Email Preferences** - Full control over reminder settings (NEW!)
 
 ---
 
@@ -148,6 +150,39 @@ Birthday Bubu Wishes is a modern full-stack web application that allows users to
 | `npm run cleanup:users` | Clean up unused users |
 | `npm run check:reviews` | Check reviews status |
 | `npm run feature:review` | Feature review utility |
+
+---
+
+## 🎂 Birthday Reminder System
+
+The app features a comprehensive automated birthday reminder system that helps you never miss important birthdays!
+
+### How It Works
+
+1. **Add Contacts**: Save your friends' and family's birthdays in the Contacts section
+2. **Configure Preferences**: Set your reminder preferences in Profile → Email Preferences
+3. **Receive Reminders**: Get email notifications before birthdays (1, 3, 7, or 14 days ahead)
+4. **Auto Wishes**: Optionally send automated birthday wishes to contacts
+
+### Features
+
+- **Smart Reminders**: Only sends reminders if you haven't created a card yet
+- **Timezone-Aware**: All reminders respect your timezone settings
+- **Customizable**: Choose which days to receive reminders (1, 3, 7, 14 days before)
+- **Beautiful Emails**: Premium responsive HTML templates
+- **Deduplication**: Prevents sending duplicate reminders
+- **Birthday Wishes**: Automatically send greetings to contacts on their birthday
+
+### Configuration
+
+Configure your preferences in `/profile?tab=preferences`:
+- Enable/disable reminders
+- Select reminder days
+- Set preferred reminder time
+- Enable/disable birthday wishes
+- Set your timezone
+
+For more details, see [BIRTHDAY_REMINDER_SYSTEM.md](BIRTHDAY_REMINDER_SYSTEM.md)
 
 ---
 

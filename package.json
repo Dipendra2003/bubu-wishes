@@ -61,6 +61,8 @@
     "canvas-confetti": "^1.9.4",
     "cloudinary": "^2.10.0",
     "clsx": "^2.1.1",
+    "cookie-parser": "^1.4.7",
+    "csurf": "^1.11.0",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "express": "^4.21.2",

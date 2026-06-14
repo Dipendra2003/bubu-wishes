@@ -394,6 +394,147 @@ export const getWelcomeEmailHtml = (userName: string) => {
   return getEmailTemplate(content, 'Welcome to BubuWish!', 'Your account is ready');
 };
 
+// Template for birthday reminder email (to app user)
+export const getBirthdayReminderEmailHtml = (
+  userName: string, 
+  contactName: string, 
+  daysUntil: number,
+  contactBirthday: Date
+) => {
+  const urgencyLevel = daysUntil === 1 ? 'urgent' : daysUntil === 3 ? 'medium' : 'low';
+  const urgencyColor = daysUntil === 1 ? '#f43f5e' : daysUntil === 3 ? '#f59e0b' : '#ec4899';
+  
+  const birthdayDate = contactBirthday.toLocaleDateString('en-US', { 
+    month: 'long', 
+    day: 'numeric' 
+  });
+  
+  const timeText = daysUntil === 1 
+    ? '<strong>Tomorrow!</strong>' 
+    : `in <strong>${daysUntil} days</strong>`;
+  
+  const content = `
+    <p class="greeting">Hi ${userName}! 👋</p>
+    <p class="message">
+      This is your friendly reminder that <strong>${contactName}'s birthday</strong> is coming up ${timeText} on <strong>${birthdayDate}</strong>!
+    </p>
+    
+    <div style="background: linear-gradient(135deg, ${urgencyColor}15 0%, ${urgencyColor}25 100%); border: 2px solid ${urgencyColor}; border-radius: 16px; padding: 32px; text-align: center; margin: 32px 0;">
+      <div style="font-size: 48px; margin-bottom: 16px;">🎂</div>
+      <p style="font-size: 24px; font-weight: 800; color: ${urgencyColor}; margin: 0 0 8px 0;">
+        ${contactName}
+      </p>
+      <p style="font-size: 18px; font-weight: 600; color: #1f2937; margin: 0 0 16px 0;">
+        Birthday: ${birthdayDate}
+      </p>
+      <div style="background: white; border-radius: 100px; padding: 12px 24px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        <p style="font-size: 14px; font-weight: 700; color: ${urgencyColor}; margin: 0; text-transform: uppercase; letter-spacing: 1px;">
+          ${daysUntil === 1 ? '⏰ Tomorrow!' : `⏳ ${daysUntil} Days Away`}
+        </p>
+      </div>
+    </div>
+    
+    <p class="message">
+      Don't let this special day slip by! Create a magical 3D birthday card that ${contactName} will absolutely love. 💝
+    </p>
+    
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${process.env.APP_URL || 'http://localhost:5000'}/dashboard?create=true" class="cta-button">
+        ✨ Create Birthday Card Now
+      </a>
+    </div>
+    
+    <div style="background: #f9fafb; border-radius: 16px; padding: 24px; margin: 24px 0;">
+      <p style="margin: 0 0 16px 0; font-weight: 700; color: #1f2937; font-size: 16px;">
+        💡 Quick Card Ideas:
+      </p>
+      <ul style="margin: 0; padding-left: 20px; color: #4b5563; font-weight: 500;">
+        <li style="margin: 8px 0;">Add a personalized voice message</li>
+        <li style="margin: 8px 0;">Include their favorite photos</li>
+        <li style="margin: 8px 0;">Choose an adorable Bubu & Dudu theme</li>
+        <li style="margin: 8px 0;">Add a puzzle lock for extra fun</li>
+        <li style="margin: 8px 0;">Schedule it to unlock on their birthday</li>
+      </ul>
+    </div>
+    
+    ${daysUntil === 1 ? `
+      <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0; border-radius: 8px;">
+        <p style="margin: 0; font-size: 14px; color: #92400e; font-weight: 600;">
+          ⚡ <strong>Last Minute Reminder:</strong> You still have time to create something amazing! Our AI assistant can help you craft the perfect message in seconds.
+        </p>
+      </div>
+    ` : ''}
+    
+    <div class="divider"></div>
+    
+    <p class="message" style="text-align: center; font-size: 14px; color: #6b7280;">
+      <strong>Want to stop these reminders?</strong><br/>
+      You can manage your email preferences in your <a href="${process.env.APP_URL || 'http://localhost:5000'}/profile?tab=preferences" style="color: #ec4899; font-weight: 600;">profile settings</a>.
+    </p>
+  `;
+  
+  const title = daysUntil === 1 
+    ? `${contactName}'s Birthday is Tomorrow! 🎉`
+    : `Upcoming Birthday: ${contactName} 🎂`;
+  
+  return getEmailTemplate(content, title, `${contactName}'s birthday reminder`);
+};
+
+// Template for birthday wish email (to contact on their birthday)
+export const getBirthdayWishEmailHtml = (
+  recipientName: string,
+  senderName: string
+) => {
+  const content = `
+    <div style="text-align: center; margin: 32px 0;">
+      <div style="font-size: 80px; line-height: 1; margin-bottom: 24px;">🎉</div>
+      <p class="greeting" style="font-size: 32px; font-weight: 800; color: #ec4899; margin: 0 0 16px 0; text-align: center;">
+        Happy Birthday, ${recipientName}!
+      </p>
+    </div>
+    
+    <p class="message" style="text-align: center; font-size: 18px;">
+      ${senderName} is thinking of you today and wishes you the most magical birthday ever! 🎂✨
+    </p>
+    
+    <div style="background: linear-gradient(135deg, #FFF0F5 0%, #FFE4E1 100%); border: 3px dashed #ec4899; border-radius: 20px; padding: 40px; text-align: center; margin: 32px 0;">
+      <div style="font-size: 64px; margin-bottom: 16px;">🎁</div>
+      <p style="font-size: 20px; font-weight: 700; color: #1f2937; margin: 0 0 16px 0;">
+        You have a special surprise waiting!
+      </p>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 24px 0; font-weight: 500;">
+        ${senderName} has created a magical 3D birthday card just for you. Open it to see your personalized surprise!
+      </p>
+      <a href="${process.env.APP_URL || 'http://localhost:5000'}/dashboard" class="cta-button">
+        🎊 Open Your Birthday Card
+      </a>
+    </div>
+    
+    <div style="text-align: center; margin: 32px 0;">
+      <div style="display: inline-block; background: white; border-radius: 16px; padding: 24px 32px; box-shadow: 0 8px 24px rgba(236, 72, 153, 0.15);">
+        <p style="font-size: 48px; font-weight: 800; color: #ec4899; margin: 0 0 8px 0; line-height: 1;">
+          🎈 🎂 🎊
+        </p>
+        <p style="font-size: 16px; color: #4b5563; margin: 0; font-weight: 600;">
+          May all your wishes come true!
+        </p>
+      </div>
+    </div>
+    
+    <p class="message" style="text-align: center;">
+      Wishing you a day filled with love, laughter, and wonderful memories! 💝
+    </p>
+    
+    <div class="divider"></div>
+    
+    <p class="message" style="text-align: center; font-size: 14px; color: #6b7280;">
+      This birthday wish was sent by <strong>${senderName}</strong> via <strong>BubuWish</strong> - The Cutest Way To Send Greetings! 💝
+    </p>
+  `;
+  
+  return getEmailTemplate(content, `🎉 Happy Birthday, ${recipientName}!`, 'Your birthday surprise awaits');
+};
+
 export const sendEmail = async (to: string, subject: string, html: string) => {
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     console.log(`[SMTP Not Configured] Skipped sending email to ${to}: ${subject}`);

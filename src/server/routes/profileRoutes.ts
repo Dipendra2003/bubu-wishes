@@ -158,6 +158,60 @@ router.put('/change-password', async (req: AuthenticatedRequest, res) => {
   }
 });
 
+// NEW: Set password for OAuth-only users
+router.post('/set-password', async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    const { newPassword } = req.body;
+
+    // Validate input
+    if (!newPassword) {
+      return res.status(400).json({ error: 'New password is required' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    // Get current user
+    const result = await db
+      .select({ password: users.password, googleId: users.googleId })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if user already has a password
+    if (result[0].password && result[0].password.length > 0) {
+      return res.status(400).json({ 
+        error: 'Password already set. Use change-password endpoint instead.' 
+      });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await db
+      .update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, userId));
+
+    res.json({ message: 'Password set successfully' });
+  } catch (error) {
+    console.error('Error setting password:', error);
+    res.status(500).json({ error: 'Failed to set password' });
+  }
+});
+
 // Delete account
 router.delete('/me', async (req: AuthenticatedRequest, res) => {
   try {

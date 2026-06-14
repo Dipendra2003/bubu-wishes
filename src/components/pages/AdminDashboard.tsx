@@ -3,6 +3,7 @@ import { useAuth } from '../../App';
 import { Users, Search, Mail, ShieldCheck, MailWarning, Gift, Trash2, Ban, CheckCircle2, TrendingUp, BarChart, Star, MessageSquare } from 'lucide-react';
 import { useToast } from '../ui/ToastProvider';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { fetchWithCsrf } from '../../hooks/useCsrf';
 
 export default function AdminDashboard() {
   const { token, user } = useAuth();
@@ -59,7 +60,7 @@ export default function AdminDashboard() {
   const handleToggleSuspend = async (id: string) => {
     if (!confirm("Toggle suspend status for this user?")) return;
     try {
-      await fetch(`/api/admin/users/${id}/toggle-suspend`, {
+      await fetchWithCsrf(`/api/admin/users/${id}/toggle-suspend`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -73,7 +74,7 @@ export default function AdminDashboard() {
   const handleDeleteUser = async (id: string) => {
     if (!confirm("Are you sure you want to completely DELETE this user?")) return;
     try {
-      await fetch(`/api/admin/users/${id}`, {
+      await fetchWithCsrf(`/api/admin/users/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -87,7 +88,7 @@ export default function AdminDashboard() {
   const handleDeleteWish = async (id: string) => {
     if (!confirm("Are you sure you want to delete this wish/card?")) return;
     try {
-      await fetch(`/api/wishes/${id}`, {
+      await fetchWithCsrf(`/api/wishes/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -100,7 +101,7 @@ export default function AdminDashboard() {
 
   const handleToggleFeatured = async (id: string) => {
     try {
-      await fetch(`/api/admin/reviews/${id}/toggle-featured`, {
+      await fetchWithCsrf(`/api/admin/reviews/${id}/toggle-featured`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -114,7 +115,7 @@ export default function AdminDashboard() {
   const handleDeleteReview = async (id: string) => {
     if (!confirm("Are you sure you want to delete this review?")) return;
     try {
-      await fetch(`/api/admin/reviews/${id}`, {
+      await fetchWithCsrf(`/api/admin/reviews/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

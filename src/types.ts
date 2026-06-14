@@ -11,6 +11,8 @@ export interface User {
   location?: string;
   timezone?: string;
   createdAt?: string;
+  googleId?: string | null;
+  password?: string;
 }
 
 export interface Wish {

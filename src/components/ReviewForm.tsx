@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../App';
 import { useToast } from './ui/ToastProvider';
+import { fetchWithCsrf } from '../hooks/useCsrf';
 
 interface ReviewFormProps {
   onClose: () => void;
@@ -17,7 +18,7 @@ export function ReviewForm({ onClose }: ReviewFormProps) {
     e.preventDefault();
     setReviewLoading(true);
     try {
-      const res = await fetch('/api/reviews', {
+      const res = await fetchWithCsrf('/api/reviews', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ rating: reviewRating, comment: reviewComment })

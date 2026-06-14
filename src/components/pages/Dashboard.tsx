@@ -14,6 +14,7 @@ import { stopTune } from '../../lib/audio';
 import { useToast } from '../ui/ToastProvider';
 import confetti from 'canvas-confetti';
 import { calculateAge, getZodiacSign, daysUntilBirthday, isMilestoneBirthday, getMilestoneBadge, getRelationshipEmoji } from '../../lib/birthdayUtils';
+import { fetchWithCsrf } from '../../hooks/useCsrf';
 
 export default function Dashboard() {
   const { user, token } = useAuth();
@@ -49,7 +50,7 @@ export default function Dashboard() {
   
   const handleRequestVerify = async () => {
     try {
-      await fetch('/api/auth/resend-verification', {
+      await fetchWithCsrf('/api/auth/resend-verification', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -67,7 +68,7 @@ export default function Dashboard() {
     }
     setOtpLoading(true);
     try {
-      const res = await fetch('/api/auth/verify', {
+      const res = await fetchWithCsrf('/api/auth/verify', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: otpCode })
@@ -103,6 +104,7 @@ export default function Dashboard() {
   });
   const [contactImagePreview, setContactImagePreview] = useState<string | null>(null);
   const [uploadingContactImage, setUploadingContactImage] = useState(false);
+  const [submittingContact, setSubmittingContact] = useState(false);
   const [relationshipFilter, setRelationshipFilter] = useState<string>('all');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
@@ -213,6 +215,15 @@ export default function Dashboard() {
 
   const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent multiple submissions
+    if (submittingContact) {
+      console.log('Already submitting, ignoring duplicate click');
+      return;
+    }
+    
+    setSubmittingContact(true);
+    
     try {
       const url = editingContact ? `/api/contacts/${editingContact.id}` : '/api/contacts';
       const method = editingContact ? 'PUT' : 'POST';
@@ -223,7 +234,7 @@ export default function Dashboard() {
         birthday: newContact.birthday ? `2000-${newContact.birthday.substring(5)}` : newContact.birthday
       };
       
-      const res = await fetch(url, {
+      const res = await fetchWithCsrf(url, {
         method,
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(contactData)
@@ -252,6 +263,8 @@ export default function Dashboard() {
     } catch(e) {
       console.error('Contact save exception:', e);
       toast(`Failed to ${editingContact ? 'update' : 'add'} contact`, 'error');
+    } finally {
+      setSubmittingContact(false);
     }
   };
 
@@ -277,7 +290,7 @@ export default function Dashboard() {
     formData.append('type', 'image'); // Add type parameter for upload controller
 
     try {
-      const res = await fetch('/api/upload', {
+      const res = await fetchWithCsrf('/api/upload', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -309,7 +322,7 @@ export default function Dashboard() {
     if (!contactToDelete) return;
     
     try {
-      const res = await fetch(`/api/contacts/${contactToDelete}`, {
+      const res = await fetchWithCsrf(`/api/contacts/${contactToDelete}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -368,7 +381,7 @@ export default function Dashboard() {
       const contact = contacts.find(c => c.id === contactId);
       if (!contact) return;
 
-      const res = await fetch(`/api/contacts/${contactId}`, {
+      const res = await fetchWithCsrf(`/api/contacts/${contactId}`, {
         method: 'PUT',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -450,7 +463,7 @@ export default function Dashboard() {
       const url = editingCardId ? `/api/wishes/${editingCardId}` : '/api/wishes';
       const method = editingCardId ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      const res = await fetchWithCsrf(url, {
         method,
         headers: { 
           'Content-Type': 'application/json',
@@ -580,7 +593,7 @@ export default function Dashboard() {
     if (!cardToDelete) return;
     
     try {
-      await fetch(`/api/wishes/${cardToDelete}`, {
+      await fetchWithCsrf(`/api/wishes/${cardToDelete}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -1217,8 +1230,22 @@ export default function Dashboard() {
 
                 <div className="flex justify-end gap-3">
                   <button type="button" onClick={cancelContactForm} className="px-4 py-2 text-gray-500 font-bold hover:text-gray-800 transition">Cancel</button>
-                  <button type="submit" disabled={uploadingContactImage} className={`px-6 py-2 ${themeStyle.button} text-white font-bold rounded-xl shadow-sm transition disabled:opacity-50`}>
-                    {editingContact ? 'Update Contact' : 'Save Contact'}
+                  <button 
+                    type="submit" 
+                    disabled={uploadingContactImage || submittingContact} 
+                    className={`px-6 py-2 ${themeStyle.button} text-white font-bold rounded-xl shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {submittingContact ? (
+                      <span className="flex items-center gap-2">
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Saving...
+                      </span>
+                    ) : (
+                      editingContact ? 'Update Contact' : 'Save Contact'
+                    )}
                   </button>
                 </div>
              </form>

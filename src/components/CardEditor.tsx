@@ -8,6 +8,7 @@ import { motion } from 'motion/react';
 import { useToast } from './ui/ToastProvider';
 import { useAuth } from '../App';
 import { MediaLibrary } from './MediaLibrary';
+import { fetchWithCsrf } from '../hooks/useCsrf';
 
 interface CardEditorProps {
   initialData: CardData;
@@ -105,7 +106,7 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
             formData.append('file', audioBlob, 'voice-note.webm');
             formData.append('type', 'audio');
             
-            const response = await fetch('/api/media-library', {
+            const response = await fetchWithCsrf('/api/media-library', {
               method: 'POST',
               headers: { Authorization: `Bearer ${token}` },
               body: formData,
@@ -263,7 +264,7 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
            updatedData.customMusicUrl = modifiedUrl;
         }
 
-        const res = await fetch('/api/cards', {
+        const res = await fetchWithCsrf('/api/cards', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -1007,7 +1008,7 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
               <button
                 onClick={async () => {
                   try {
-                    const res = await fetch('/api/wishes', {
+                    const res = await fetchWithCsrf('/api/wishes', {
                       method: 'POST',
                       headers: { 
                         'Content-Type': 'application/json',

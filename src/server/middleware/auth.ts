@@ -4,7 +4,8 @@ import { db } from "../../db/index";
 import { users } from "../../db/schema";
 import { eq } from "drizzle-orm";
 
-const JWT_SECRET = process.env.JWT_SECRET || "super-secret-fallback-key-2024";
+// JWT_SECRET is validated at startup - no fallback allowed
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 export interface AuthenticatedRequest extends Request {
   user?: any;

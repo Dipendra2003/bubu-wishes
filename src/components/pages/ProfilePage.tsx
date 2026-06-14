@@ -1,18 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../App';
 import { useToast } from '../ui/ToastProvider';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { User } from '../../types';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, UserCircle, Mail } from 'lucide-react';
+import EmailPreferences from '../EmailPreferences';
+import { fetchWithCsrf } from '../../hooks/useCsrf';
 
 export default function ProfilePage() {
   const { user: authUser, token, logout } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  
+  // Active tab from URL or default to 'profile'
+  const activeTab = (searchParams.get('tab') as 'profile' | 'preferences') || 'profile';
+  
+  const setActiveTab = (tab: 'profile' | 'preferences') => {
+    setSearchParams({ tab });
+  };
   
   const [formData, setFormData] = useState({
     name: '',
@@ -108,7 +118,7 @@ export default function ProfilePage() {
     formData.append('type', 'image');
 
     try {
-      const res = await fetch('/api/upload', {
+      const res = await fetchWithCsrf('/api/upload', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -119,7 +129,7 @@ export default function ProfilePage() {
         setAvatarPreview(data.url);
         
         // Update profile with new avatar
-        await fetch('/api/profile/me', {
+        await fetchWithCsrf('/api/profile/me', {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -150,7 +160,7 @@ export default function ProfilePage() {
 
     setSaving(true);
     try {
-      const res = await fetch('/api/profile/me', {
+      const res = await fetchWithCsrf('/api/profile/me', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -196,7 +206,7 @@ export default function ProfilePage() {
 
     setChangingPassword(true);
     try {
-      const res = await fetch('/api/profile/change-password', {
+      const res = await fetchWithCsrf('/api/profile/change-password', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -231,7 +241,7 @@ export default function ProfilePage() {
 
     setDeleting(true);
     try {
-      const res = await fetch('/api/profile/me', {
+      const res = await fetchWithCsrf('/api/profile/me', {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -276,6 +286,41 @@ export default function ProfilePage() {
           <p className="text-gray-600 font-medium">Manage your account settings and preferences</p>
         </motion.div>
 
+        {/* Tabs */}
+        <div className="mb-6 bg-white rounded-2xl shadow-md p-2 flex gap-2">
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${
+              activeTab === 'profile'
+                ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <UserCircle className="w-5 h-5" />
+            Profile Settings
+          </button>
+          <button
+            onClick={() => setActiveTab('preferences')}
+            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${
+              activeTab === 'preferences'
+                ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <Mail className="w-5 h-5" />
+            Email Preferences
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'preferences' ? (
+          <EmailPreferences />
+        ) : (
+        <motion.div
+          key="profile-tab"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
         {/* Profile Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -562,6 +607,8 @@ export default function ProfilePage() {
             </div>
           )}
         </motion.div>
+        </motion.div>
+        )}
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { X, Upload, Search, Image as ImageIcon, Music, Trash2, Edit2, Check, X a
 import { useAuth } from '../App';
 import { useToast } from './ui/ToastProvider';
 import { cn } from '../lib/utils';
+import { fetchWithCsrf } from '../hooks/useCsrf';
 
 interface MediaItem {
   id: string;
@@ -174,7 +175,7 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
         formData.append('file', file);
         formData.append('type', type);
         
-        const response = await fetch('/api/media-library', {
+        const response = await fetchWithCsrf('/api/media-library', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: formData,
@@ -198,7 +199,7 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
 
   const handleDelete = async (id: string) => {
     try {
-      const response = await fetch(`/api/media-library/${id}`, {
+      const response = await fetchWithCsrf(`/api/media-library/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -221,7 +222,7 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
     }
     
     try {
-      const response = await fetch(`/api/media-library/${id}`, {
+      const response = await fetchWithCsrf(`/api/media-library/${id}`, {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
@@ -245,7 +246,7 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
   const handleSelect = async (item: MediaItem) => {
     try {
       // Track usage
-      await fetch(`/api/media-library/${item.id}/use`, {
+      await fetchWithCsrf(`/api/media-library/${item.id}/use`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

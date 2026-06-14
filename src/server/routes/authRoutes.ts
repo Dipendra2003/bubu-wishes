@@ -3,14 +3,18 @@ import { db } from "../../db/index";
 import { users, verificationCodes } from "../../db/schema";
 import { eq, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { authenticate } from "../middleware/auth";
 import { sendEmail, getVerificationEmailHtml, getPasswordResetEmailHtml, getWelcomeEmailHtml } from "../services/emailService";
 import { authLimiter } from "../middleware/rateLimiter";
+import { validatePassword } from "../lib/passwordValidation";
+import { generateTokenPair, refreshAccessToken, revokeRefreshToken, revokeAllUserTokens } from "../lib/tokenManager";
+import { logActivity } from "../lib/activityLogger";
+// Google OAuth removed
 
 export const authRouter = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || "super-secret-fallback-key-2024";
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCK_TIME = 15 * 60 * 1000; // 15 minutes
 
 const generateOTP = async (userId: string, purpose: 'verification' | 'reset_password') => {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -30,6 +34,7 @@ const generateOTP = async (userId: string, purpose: 'verification' | 'reset_pass
 authRouter.use("/signup", authLimiter);
 authRouter.use("/login", authLimiter);
 
+// IMPROVED: Signup with stronger password validation
 authRouter.post("/signup", async (req: any, res) => {
   try {
     const { name, email, password } = req.body;
@@ -43,8 +48,13 @@ authRouter.post("/signup", async (req: any, res) => {
       return res.status(400).json({ error: "Please provide a valid email address" });
     }
 
-    if (!password || password.length < 8) {
-      return res.status(400).json({ error: "Password must be at least 8 characters long" });
+    // IMPROVED: Enhanced password validation
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({ 
+        error: "Password does not meet requirements",
+        details: passwordValidation.errors
+      });
     }
 
     const existingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
@@ -69,7 +79,6 @@ authRouter.post("/signup", async (req: any, res) => {
       getVerificationEmailHtml(otp, name)
     );
     
-    // Don't return token - user must verify email first before logging in
     res.json({ 
       success: true,
       message: "Account created! Please check your email to verify your account.",
@@ -77,10 +86,11 @@ authRouter.post("/signup", async (req: any, res) => {
     });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: "Could not create account. Missing DB configuration?" });
+    res.status(500).json({ error: "Could not create account" });
   }
 });
 
+// IMPROVED: Login with brute-force protection and refresh tokens
 authRouter.post("/login", async (req: any, res) => {
   try {
     const { email, password } = req.body;
@@ -91,36 +101,175 @@ authRouter.post("/login", async (req: any, res) => {
       return res.status(400).json({ error: "Invalid credentials" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ error: "Invalid credentials" });
-    }
-    
+    // Check if account is suspended
     if (user.suspended) {
       return res.status(403).json({ error: "Your account has been suspended" });
     }
 
-    // Check if user is verified before allowing login
+    // IMPROVED: Check if account is locked due to too many failed attempts
+    if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
+      const remainingTime = Math.ceil((new Date(user.lockedUntil).getTime() - Date.now()) / 60000);
+      return res.status(429).json({ 
+        error: `Account temporarily locked. Please try again in ${remainingTime} minute(s)`,
+        lockedUntil: user.lockedUntil
+      });
+    }
+
+    // Verify password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      // IMPROVED: Track failed login attempts
+      const attempts = parseInt(user.loginAttempts || '0') + 1;
+      
+      if (attempts >= MAX_LOGIN_ATTEMPTS) {
+        const lockedUntil = new Date(Date.now() + LOCK_TIME);
+        await db.update(users)
+          .set({ loginAttempts: attempts.toString(), lockedUntil })
+          .where(eq(users.id, user.id));
+        
+        await logActivity(user.id, 'account_locked', req);
+        
+        return res.status(429).json({ 
+          error: "Too many failed attempts. Account locked for 15 minutes.",
+          lockedUntil
+        });
+      }
+      
+      await db.update(users)
+        .set({ loginAttempts: attempts.toString() })
+        .where(eq(users.id, user.id));
+      
+      await logActivity(user.id, 'failed_login', req);
+      
+      return res.status(400).json({ 
+        error: "Invalid credentials",
+        attemptsRemaining: MAX_LOGIN_ATTEMPTS - attempts
+      });
+    }
+
+    // Check if user is verified
     if (!user.verified) {
       return res.status(403).json({ 
         error: "Please verify your email before logging in",
         verified: false,
-        email: user.email,
-        message: "Check your email for the verification code. Click 'Resend Code' if you didn't receive it."
+        email: user.email
       });
     }
 
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, verified: user.verified } });
+    // IMPROVED: Reset login attempts on successful login
+    await db.update(users)
+      .set({ loginAttempts: '0', lockedUntil: null })
+      .where(eq(users.id, user.id));
+
+    // IMPROVED: Generate access and refresh tokens
+    const { accessToken, refreshToken } = await generateTokenPair(user.id);
+
+    // Set refresh token as httpOnly secure cookie
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      path: '/',
+    });
+
+    // Log successful login
+    await logActivity(user.id, 'login', req);
+    
+    res.json({ 
+      accessToken,
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role, 
+        verified: user.verified 
+      } 
+    });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: "Database error during login. Check server configuration." });
+    res.status(500).json({ error: "Login failed" });
+  }
+});
+
+// NEW: Refresh access token
+authRouter.post("/refresh", async (req: any, res) => {
+  try {
+    // Get refresh token from cookie (preferred) or body (fallback for migration)
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+    
+    if (!refreshToken) {
+      // Silent fail - this is expected when user is not logged in
+      return res.status(403).json({ error: "No refresh token" });
+    }
+
+    const tokens = await refreshAccessToken(refreshToken);
+    
+    if (!tokens) {
+      // Clear invalid cookie
+      res.clearCookie('refreshToken');
+      return res.status(403).json({ error: "Invalid or expired refresh token" });
+    }
+
+    // Set new refresh token as httpOnly cookie
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+
+    res.json({ accessToken: tokens.accessToken });
+  } catch (e) {
+    console.error('Token refresh error:', e);
+    res.clearCookie('refreshToken');
+    res.status(500).json({ error: "Token refresh failed" });
+  }
+});
+
+// IMPROVED: Logout with token revocation
+authRouter.post("/logout", authenticate, async (req: any, res) => {
+  try {
+    // Get refresh token from cookie (preferred) or body (fallback)
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+    
+    if (refreshToken) {
+      await revokeRefreshToken(refreshToken);
+    }
+
+    // Clear refresh token cookie
+    res.clearCookie('refreshToken', { path: '/' });
+
+    await logActivity(req.user.id, 'logout', req);
+    
+    res.json({ success: true, message: "Logged out successfully" });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Logout failed" });
+  }
+});
+
+// NEW: Logout from all devices
+authRouter.post("/logout-all", authenticate, async (req: any, res) => {
+  try {
+    await revokeAllUserTokens(req.user.id);
+    
+    // Clear current refresh token cookie
+    res.clearCookie('refreshToken', { path: '/' });
+    
+    await logActivity(req.user.id, 'logout', req, { allDevices: true });
+    
+    res.json({ success: true, message: "Logged out from all devices" });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Logout failed" });
   }
 });
 
 authRouter.get("/me", authenticate, (req: any, res) => {
-  const { id, name, email, role, verified } = req.user;
-  res.json({ user: { id, name, email, role, verified } });
+  const { id, name, email, role, verified, avatarUrl } = req.user;
+  res.json({ user: { id, name, email, role, verified, avatarUrl } });
 });
 
 authRouter.post("/verify", authenticate, async (req: any, res) => {
@@ -142,7 +291,6 @@ authRouter.post("/verify", authenticate, async (req: any, res) => {
   await db.update(users).set({ verified: true }).where(eq(users.id, req.user.id));
   await db.delete(verificationCodes).where(eq(verificationCodes.userId, req.user.id));
   
-  // Send welcome email after successful verification
   await sendEmail(
     req.user.email,
     "🎉 Welcome to BubuWish!",
@@ -152,7 +300,6 @@ authRouter.post("/verify", authenticate, async (req: any, res) => {
   res.json({ success: true, message: "Account verified successfully" });
 });
 
-// Public verification endpoint (for users who signed up but can't login yet)
 authRouter.post("/verify-public", async (req: any, res) => {
   try {
     const { email, code } = req.body;
@@ -186,13 +333,12 @@ authRouter.post("/verify-public", async (req: any, res) => {
 
     const { expiresAt } = records[0];
     if (new Date() > new Date(expiresAt)) {
-      return res.status(400).json({ error: "Verification code has expired. Please request a new one." });
+      return res.status(400).json({ error: "Verification code has expired" });
     }
 
     await db.update(users).set({ verified: true }).where(eq(users.id, user.id));
     await db.delete(verificationCodes).where(eq(verificationCodes.userId, user.id));
     
-    // Send welcome email after successful verification
     await sendEmail(
       user.email,
       "🎉 Welcome to BubuWish!",
@@ -217,7 +363,6 @@ authRouter.post("/resend-verification", authenticate, async (req: any, res) => {
   res.json({ success: true });
 });
 
-// Public endpoint for resending verification (for users who can't login because they're not verified)
 authRouter.post("/resend-verification-public", async (req: any, res) => {
   try {
     const { email } = req.body;
@@ -229,7 +374,6 @@ authRouter.post("/resend-verification-public", async (req: any, res) => {
     const userRecords = await db.select().from(users).where(eq(users.email, email)).limit(1);
     
     if (userRecords.length === 0) {
-      // Don't reveal if email exists or not for security
       return res.json({ success: true, message: "If an account exists, a verification email was sent." });
     }
 
@@ -267,6 +411,7 @@ authRouter.post("/forgot-password", async (req: any, res) => {
   res.json({ success: true, message: "If an account exists, an email was sent." });
 });
 
+// IMPROVED: Password reset with validation and activity logging
 authRouter.post("/reset-password", async (req: any, res) => {
   const { email, code, newPassword } = req.body;
   
@@ -274,6 +419,15 @@ authRouter.post("/reset-password", async (req: any, res) => {
   if (userRecords.length === 0) return res.status(400).json({ error: "Invalid request" });
   
   const userId = userRecords[0].id;
+
+  // Validate new password
+  const passwordValidation = validatePassword(newPassword);
+  if (!passwordValidation.valid) {
+    return res.status(400).json({ 
+      error: "Password does not meet requirements",
+      details: passwordValidation.errors
+    });
+  }
 
   const records = await db.select().from(verificationCodes)
     .where(and(eq(verificationCodes.userId, userId), eq(verificationCodes.code, code), eq(verificationCodes.purpose, 'reset_password')));
@@ -284,8 +438,68 @@ authRouter.post("/reset-password", async (req: any, res) => {
   if (new Date() > new Date(expiresAt)) return res.status(400).json({ error: "Code has expired" });
 
   const hashedPassword = await bcrypt.hash(newPassword, 10);
-  await db.update(users).set({ password: hashedPassword }).where(eq(users.id, userId));
+  await db.update(users).set({ password: hashedPassword, loginAttempts: '0' }).where(eq(users.id, userId));
   await db.delete(verificationCodes).where(and(eq(verificationCodes.userId, userId), eq(verificationCodes.purpose, 'reset_password')));
 
+  // Revoke all refresh tokens for security
+  await revokeAllUserTokens(userId);
+
+  await logActivity(userId, 'password_reset', req);
+
   res.json({ success: true, message: "Password updated successfully" });
+});
+
+// NEW: Change password (authenticated)
+authRouter.post("/change-password", authenticate, async (req: any, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: "Current and new passwords are required" });
+    }
+
+    // Validate new password
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({ 
+        error: "New password does not meet requirements",
+        details: passwordValidation.errors
+      });
+    }
+
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, req.user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Current password is incorrect" });
+    }
+
+    // Update password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await db.update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, req.user.id));
+
+    // Revoke all refresh tokens for security
+    await revokeAllUserTokens(req.user.id);
+
+    await logActivity(req.user.id, 'password_change', req);
+
+    res.json({ success: true, message: "Password changed successfully. Please login again." });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Password change failed" });
+  }
+});
+
+// NEW: Get activity logs
+authRouter.get("/activity", authenticate, async (req: any, res) => {
+  try {
+    const { getUserActivity } = await import("../lib/activityLogger");
+    const logs = await getUserActivity(req.user.id, 20);
+    
+    res.json({ logs });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Failed to fetch activity" });
+  }
 });

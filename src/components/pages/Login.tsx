@@ -4,6 +4,7 @@ import { useAuth } from '../../App';
 import { MessageCircleHeart, LogIn, Loader2, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useToast } from '../ui/ToastProvider';
+import { fetchWithCsrf } from '../../hooks/useCsrf';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -24,7 +25,7 @@ export default function Login() {
     setLoading(true);
     
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetchWithCsrf('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -46,7 +47,8 @@ export default function Login() {
       
       if (!res.ok) throw new Error(data.error || 'Failed to login');
       
-      login(data.token, data.user);
+      // Store only access token (refresh token is in httpOnly cookie)
+      login(data.accessToken, data.user);
       toast('Login Successful!', 'success');
       navigate(data.user.role === 'admin' ? '/admin' : '/dashboard');
     } catch (err: any) {
@@ -62,7 +64,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/forgot-password', {
+      const res = await fetchWithCsrf('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -83,7 +85,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/reset-password', {
+      const res = await fetchWithCsrf('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code: resetCode, newPassword: password })
@@ -214,7 +216,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-md text-sm font-bold text-white bg-pink-500 hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition disabled:opacity-70 flex gap-2 items-center"
+                className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-md text-sm font-bold text-white bg-pink-500 hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition disabled:opacity-70 gap-2 items-center"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 
                  view === 'login' ? <><LogIn className="w-5 h-5" /> Sign in</> :

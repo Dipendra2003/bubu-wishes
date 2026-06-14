@@ -422,22 +422,13 @@ export default function LandingPage() {
                     </div>
                   ))
                 ) : (
-                  [
-                    { name: "Sarah J.", role: "Girlfriend", quote: "I sent the Valentine's theme to my boyfriend with a voice note. He literally cried. The unboxing animation is so satisfying!" },
-                    { name: "Mike T.", role: "Best Friend", quote: "The math puzzle lock is hilarious. I made my friend solve algebra before he could see my birthday message." },
-                    { name: "Emily W.", role: "Long Distance", quote: "I live across the country from my mom. Being able to send a full 3D interactive card makes it feel so much more special." }
-                  ].map((t, i) => (
-                    <div key={i} className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20">
-                       <p className="text-lg font-medium leading-relaxed mb-6 italic">"{t.quote}"</p>
-                       <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold">{t.name[0]}</div>
-                          <div>
-                             <h4 className="font-bold">{t.name}</h4>
-                             <p className="text-sm text-pink-200">{t.role}</p>
-                          </div>
-                       </div>
+                  <div className="col-span-full text-center py-12">
+                    <div className="bg-white/10 backdrop-blur-md rounded-3xl p-12 border border-white/20">
+                      <MessageCircleHeart className="w-16 h-16 mx-auto mb-4 text-pink-200" />
+                      <p className="text-xl font-medium text-pink-100 mb-2">No reviews yet</p>
+                      <p className="text-pink-200">Be the first to share your experience!</p>
                     </div>
-                  ))
+                  </div>
                 )}
              </div>
            </div>

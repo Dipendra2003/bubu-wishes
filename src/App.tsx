@@ -8,6 +8,7 @@ import VerifyEmail from './components/pages/VerifyEmail';
 import Dashboard from './components/pages/Dashboard';
 import AdminDashboard from './components/pages/AdminDashboard';
 import ProfilePage from './components/pages/ProfilePage';
+import SecurityPage from './components/pages/SecurityPage';
 import Navbar from './components/layout/Navbar';
 import CardView from './components/pages/CardView';
 import AboutPage from './components/pages/AboutPage';
@@ -17,6 +18,7 @@ import ContactPage from './components/pages/ContactPage';
 import FAQPage from './components/pages/FAQPage';
 import { ToastProvider, useToast } from './components/ui/ToastProvider';
 import AIAssistantWidget from './components/ui/AIAssistantWidget';
+import { useTokenRefresh } from './hooks/useTokenRefresh';
 
 interface AuthContextType {
   user: User | null;
@@ -24,6 +26,7 @@ interface AuthContextType {
   login: (token: string, user: User) => void;
   logout: () => void;
   isLoading: boolean;
+  updateUser?: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -38,6 +41,9 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [isLoading, setIsLoading] = useState(true);
+
+  // Enable automatic token refresh
+  useTokenRefresh();
 
   useEffect(() => {
     if (token) {
@@ -73,8 +79,14 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
+  const updateUser = (updates: Partial<User>) => {
+    if (user) {
+      setUser({ ...user, ...updates });
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, isLoading, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
@@ -129,6 +141,14 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <ProfilePage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/security" 
+                  element={
+                    <ProtectedRoute>
+                      <SecurityPage />
                     </ProtectedRoute>
                   } 
                 />
