@@ -18,6 +18,7 @@ import ContactPage from './components/pages/ContactPage';
 import FAQPage from './components/pages/FAQPage';
 import { ToastProvider, useToast } from './components/ui/ToastProvider';
 import AIAssistantWidget from './components/ui/AIAssistantWidget';
+import HeartCursorTrail from './components/HeartCursorTrail';
 import { useTokenRefresh } from './hooks/useTokenRefresh';
 
 interface AuthContextType {
@@ -164,6 +165,7 @@ export default function App() {
               </Routes>
             </main>
             <AIAssistantWidget />
+            <HeartCursorTrail />
           </div>
         </BrowserRouter>
       </AuthProvider>

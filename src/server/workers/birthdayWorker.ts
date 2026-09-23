@@ -9,14 +9,14 @@ if (connection && process.env.REDIS_URL) {
   try {
     birthdayWorker = new Worker("birthday-reminders", async (job: Job) => {
       if (job.name === "check-birthdays") {
-        logger.info('Processing birthday reminders', {
+        logger.debug('Processing birthday reminders', {
           jobId: job.id,
           trigger: job.data.trigger
         });
         
         const result = await processBirthdayReminders();
         
-        logger.info('Birthday check complete', {
+        logger.debug('Birthday check complete', {
           jobId: job.id,
           remindersSent: result.remindersSent,
           wishesSent: result.wishesSent,
@@ -27,6 +27,7 @@ if (connection && process.env.REDIS_URL) {
       }
     }, { 
       connection: connection as any,
+      skipVersionCheck: true,
       concurrency: 1,
       stalledInterval: 60000,
       maxStalledCount: 1,
@@ -41,7 +42,7 @@ if (connection && process.env.REDIS_URL) {
     });
 
     birthdayWorker.on("completed", (job) => {
-      logger.info('Birthday reminder job completed', { jobId: job.id });
+      logger.debug('Birthday reminder job completed', { jobId: job.id });
     });
 
     birthdayWorker.on("failed", (job, err) => {
@@ -57,9 +58,10 @@ if (connection && process.env.REDIS_URL) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       
       // Check if it's a connection error that will auto-recover
-      if (errorMessage.includes('ETIMEDOUT') || 
+      if (errorMessage.includes('ENOTFOUND')) {
+        logger.warn('Birthday worker: Redis host resolution failed (ENOTFOUND). Please check REDIS_URL.');
+      } else if (errorMessage.includes('ETIMEDOUT') || 
           errorMessage.includes('ECONNRESET') || 
-          errorMessage.includes('ENOTFOUND') ||
           errorMessage.includes('ENETUNREACH')) {
         logger.warn('Birthday worker connection error (will auto-retry)', { error: errorMessage });
       } else {
@@ -71,7 +73,7 @@ if (connection && process.env.REDIS_URL) {
       logger.warn('Birthday worker closed');
     });
 
-    logger.info('Birthday reminder worker started with auto-cleanup enabled');
+    logger.debug('Birthday reminder worker started with auto-cleanup enabled');
   } catch (e) {
     logger.error('Failed to start birthday reminder worker', e as Error);
   }

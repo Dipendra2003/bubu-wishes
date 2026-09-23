@@ -2,8 +2,10 @@ import { Queue } from "bullmq";
 import { connection } from "../queues/emailQueue";
 import { processBirthdayReminders } from "./reminderService";
 import { logger } from "../lib/logger";
+import crypto from "crypto";
 
 export let birthdayReminderQueue: Queue | null = null;
+let inMemorySchedulerTimer: NodeJS.Timeout | null = null;
 
 /**
  * Acquire distributed lock using Redis SET NX EX
@@ -53,20 +55,30 @@ async function releaseDistributedLock(
  * Note: QueueScheduler is not needed in BullMQ v5+
  */
 export async function initializeBirthdayScheduler() {
-  if (!connection || !process.env.REDIS_URL || process.env.REDIS_URL.includes('localhost')) {
-    logger.warn('Redis not configured - Birthday scheduler will not run automatically');
-    logger.info('Manual trigger available via POST /api/cron/send-birthday-reminders');
+  if (!connection || !process.env.REDIS_URL || process.env.REDIS_URL.includes('localhost') || process.env.REDIS_URL.trim() === '') {
+    logger.info('Redis not configured - Starting in-memory fallback birthday scheduler (runs hourly)');
+    if (!inMemorySchedulerTimer) {
+      inMemorySchedulerTimer = setInterval(async () => {
+        try {
+          logger.info('[In-Memory Scheduler] Checking birthday reminders...');
+          await processBirthdayReminders();
+        } catch (err) {
+          logger.error('[In-Memory Scheduler] Error in birthday check', err as Error);
+        }
+      }, 60 * 60 * 1000);
+    }
     return;
   }
 
   const lockKey = 'scheduler:init:lock';
-  const lockValue = `${Date.now()}-${Math.random()}`;
+  const lockValue = `${Date.now()}-${crypto.randomUUID()}`;
   const lockTTL = 10; // 10 seconds
 
   try {
     // Create dedicated queue for birthday reminders
     birthdayReminderQueue = new Queue("birthday-reminders", { 
       connection: connection as any,
+      skipVersionCheck: true,
       defaultJobOptions: {
         attempts: 3,
         backoff: {
@@ -79,24 +91,24 @@ export async function initializeBirthdayScheduler() {
     });
 
     // CRITICAL: Acquire distributed lock to prevent race condition
-    logger.info('Attempting to acquire scheduler initialization lock');
+    logger.debug('Attempting to acquire scheduler initialization lock');
     const lockAcquired = await acquireDistributedLock(lockKey, lockValue, lockTTL);
     
     if (!lockAcquired) {
-      logger.info('Another instance is initializing scheduler, skipping');
-      logger.info('Birthday reminder queue connected (scheduler already initialized by another instance)');
+      logger.debug('Another instance is initializing scheduler, skipping');
+      logger.debug('Birthday reminder queue connected (scheduler already initialized by another instance)');
       return;
     }
 
-    logger.info('Lock acquired, initializing scheduler');
+    logger.debug('Lock acquired, initializing scheduler');
 
     try {
       // Remove any existing repeatable jobs to avoid duplicates
       const repeatableJobs = await birthdayReminderQueue.getRepeatableJobs();
-      logger.info('Found existing repeatable jobs', { count: repeatableJobs.length });
+      logger.debug('Found existing repeatable jobs', { count: repeatableJobs.length });
       
       for (const job of repeatableJobs) {
-        logger.info('Removing old repeatable job', { jobKey: job.key });
+        logger.debug('Removing old repeatable job', { jobKey: job.key });
         await birthdayReminderQueue.removeRepeatableByKey(job.key);
       }
 
@@ -116,8 +128,8 @@ export async function initializeBirthdayScheduler() {
         }
       );
 
-      logger.info('Birthday reminder scheduler initialized', { intervalPattern: '0 * * * *' });
-      logger.info('Next check will process all timezones and send reminders accordingly');
+      logger.debug('Birthday reminder scheduler initialized', { intervalPattern: '0 * * * *' });
+      logger.debug('Next check will process all timezones and send reminders accordingly');
 
       // Add immediate job to test the system on startup
       await birthdayReminderQueue.add(
@@ -128,12 +140,12 @@ export async function initializeBirthdayScheduler() {
         }
       );
 
-      logger.info('Initial birthday check queued for immediate processing');
+      logger.debug('Initial birthday check queued for immediate processing');
 
     } finally {
       // Always release lock, even if initialization fails
       await releaseDistributedLock(lockKey, lockValue);
-      logger.info('Lock released');
+      logger.debug('Lock released');
     }
 
   } catch (error) {
@@ -213,6 +225,11 @@ export async function getSchedulerStatus() {
  * Gracefully shutdown the scheduler
  */
 export async function shutdownScheduler() {
+  if (inMemorySchedulerTimer) {
+    clearInterval(inMemorySchedulerTimer);
+    inMemorySchedulerTimer = null;
+    logger.info('In-memory birthday scheduler stopped');
+  }
   if (birthdayReminderQueue) {
     await birthdayReminderQueue.close();
     logger.info('Birthday reminder queue closed');

@@ -15,7 +15,7 @@ export function startTokenCleanup() {
 
   // Run immediately on startup
   cleanupExpiredTokens().then(count => {
-    logger.info('Token cleanup service started', { cleanedTokens: count });
+    logger.debug('Token cleanup service started', { cleanedTokens: count });
   });
 
   // Then run every 6 hours
@@ -30,7 +30,7 @@ export function startTokenCleanup() {
     }
   }, 6 * 60 * 60 * 1000); // 6 hours
 
-  logger.info('Token cleanup scheduler initialized', { intervalHours: 6 });
+  logger.debug('Token cleanup scheduler initialized', { intervalHours: 6 });
 }
 
 /**

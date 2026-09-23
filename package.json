@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "A modern 3D interactive birthday card application with AI assistance, featuring Bubu & Dudu characters",
   "author": {
-    "name": "Dipendra",
+    "name": "Dipendra Kumar",
     "url": "https://github.com/Dipendra2003"
   },
   "license": "MIT",
@@ -34,7 +34,7 @@
   },
   "type": "module",
   "scripts": {
-    "dev": "node ./node_modules/tsx/dist/cli.mjs server.ts",
+    "dev": "node scripts/dev.js",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist",
@@ -42,12 +42,7 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio",
-    "cleanup:users": "node ./node_modules/tsx/dist/cli.mjs cleanup-users.ts",
-    "create:admin": "node ./node_modules/tsx/dist/cli.mjs create-admin.ts",
-    "manage:users": "node ./node_modules/tsx/dist/cli.mjs manage-users.ts",
-    "check:reviews": "node ./node_modules/tsx/dist/cli.mjs check-reviews.ts",
-    "feature:review": "node ./node_modules/tsx/dist/cli.mjs feature-review.ts"
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -93,6 +88,7 @@
     "@types/nodemailer": "^8.0.0",
     "@types/pg": "^8.20.0",
     "autoprefixer": "^10.4.21",
+    "cross-env": "^10.1.0",
     "drizzle-kit": "^0.31.10",
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",

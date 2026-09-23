@@ -7,17 +7,19 @@ import { authenticate } from "../middleware/auth";
 import { sendEmail, getVerificationEmailHtml, getPasswordResetEmailHtml, getWelcomeEmailHtml } from "../services/emailService";
 import { authLimiter } from "../middleware/rateLimiter";
 import { validatePassword } from "../lib/passwordValidation";
-import { generateTokenPair, refreshAccessToken, revokeRefreshToken, revokeAllUserTokens } from "../lib/tokenManager";
-import { logActivity } from "../lib/activityLogger";
-// Google OAuth removed
+import { generateTokenPair, refreshAccessToken, revokeRefreshToken, revokeAllUserTokens, getActiveSessions, revokeSession } from "../lib/tokenManager";
+import { logActivity, isNewLoginLocation } from "../lib/activityLogger";
+import { verifyGoogleIdToken } from "../services/oauthService";
+import crypto from "crypto";
 
 export const authRouter = express.Router();
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCK_TIME = 15 * 60 * 1000; // 15 minutes
+const BCRYPT_COST = 12; // Increased for better security
 
 const generateOTP = async (userId: string, purpose: 'verification' | 'reset_password') => {
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const code = crypto.randomInt(100000, 1000000).toString();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins expiry
   
   await db.delete(verificationCodes).where(and(eq(verificationCodes.userId, userId), eq(verificationCodes.purpose, purpose)));
@@ -33,8 +35,9 @@ const generateOTP = async (userId: string, purpose: 'verification' | 'reset_pass
 
 authRouter.use("/signup", authLimiter);
 authRouter.use("/login", authLimiter);
+authRouter.use("/google", authLimiter);
 
-// IMPROVED: Signup with stronger password validation
+// Signup with stronger password validation
 authRouter.post("/signup", async (req: any, res) => {
   try {
     const { name, email, password } = req.body;
@@ -48,7 +51,6 @@ authRouter.post("/signup", async (req: any, res) => {
       return res.status(400).json({ error: "Please provide a valid email address" });
     }
 
-    // IMPROVED: Enhanced password validation
     const passwordValidation = validatePassword(password);
     if (!passwordValidation.valid) {
       return res.status(400).json({ 
@@ -62,7 +64,7 @@ authRouter.post("/signup", async (req: any, res) => {
       return res.status(400).json({ error: "Email already taken" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_COST);
     
     const newUsers = await db.insert(users).values({
       name,
@@ -90,23 +92,22 @@ authRouter.post("/signup", async (req: any, res) => {
   }
 });
 
-// IMPROVED: Login with brute-force protection and refresh tokens
+// Login with brute-force protection and suspicious login detection
 authRouter.post("/login", async (req: any, res) => {
   try {
     const { email, password } = req.body;
     const userRecords = await db.select().from(users).where(eq(users.email, email)).limit(1);
     const user = userRecords[0];
     
-    if (!user) {
+    // Check if account has password (could be OAuth only)
+    if (!user || !user.password) {
       return res.status(400).json({ error: "Invalid credentials" });
     }
 
-    // Check if account is suspended
     if (user.suspended) {
       return res.status(403).json({ error: "Your account has been suspended" });
     }
 
-    // IMPROVED: Check if account is locked due to too many failed attempts
     if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
       const remainingTime = Math.ceil((new Date(user.lockedUntil).getTime() - Date.now()) / 60000);
       return res.status(429).json({ 
@@ -115,10 +116,8 @@ authRouter.post("/login", async (req: any, res) => {
       });
     }
 
-    // Verify password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      // IMPROVED: Track failed login attempts
       const attempts = parseInt(user.loginAttempts || '0') + 1;
       
       if (attempts >= MAX_LOGIN_ATTEMPTS) {
@@ -147,7 +146,6 @@ authRouter.post("/login", async (req: any, res) => {
       });
     }
 
-    // Check if user is verified
     if (!user.verified) {
       return res.status(403).json({ 
         error: "Please verify your email before logging in",
@@ -156,15 +154,22 @@ authRouter.post("/login", async (req: any, res) => {
       });
     }
 
-    // IMPROVED: Reset login attempts on successful login
     await db.update(users)
       .set({ loginAttempts: '0', lockedUntil: null })
       .where(eq(users.id, user.id));
 
-    // IMPROVED: Generate access and refresh tokens
-    const { accessToken, refreshToken } = await generateTokenPair(user.id);
+    // Suspicious login detection
+    const currentIp = req.headers['x-forwarded-for']?.toString().split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+    const isNewLocation = await isNewLoginLocation(user.id, currentIp);
+    
+    if (isNewLocation) {
+      await logActivity(user.id, 'suspicious_login', req, { message: 'Login from new IP address' });
+      // In a real system, you might send an email alert here
+    }
 
-    // Set refresh token as httpOnly secure cookie
+    // Generate tokens, pass req for device info
+    const { accessToken, refreshToken } = await generateTokenPair(user.id, req);
+
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -173,7 +178,6 @@ authRouter.post("/login", async (req: any, res) => {
       path: '/',
     });
 
-    // Log successful login
     await logActivity(user.id, 'login', req);
     
     res.json({ 
@@ -183,7 +187,8 @@ authRouter.post("/login", async (req: any, res) => {
         name: user.name, 
         email: user.email, 
         role: user.role, 
-        verified: user.verified 
+        verified: user.verified,
+        avatarUrl: user.avatarUrl
       } 
     });
   } catch (e) {
@@ -192,26 +197,131 @@ authRouter.post("/login", async (req: any, res) => {
   }
 });
 
-// NEW: Refresh access token
+// Google OAuth Login / Signup
+authRouter.post("/google", async (req: any, res) => {
+  try {
+    const { credential } = req.body;
+    
+    if (!credential) {
+      return res.status(400).json({ error: "Google credential is required" });
+    }
+
+    // Verify token server-side
+    const payload = await verifyGoogleIdToken(credential);
+    if (!payload) {
+      await logActivity('unknown', 'google_auth_failed', req);
+      return res.status(401).json({ error: "Invalid Google token" });
+    }
+
+    const { sub: googleId, email, name, picture, email_verified } = payload;
+
+    // Check if user exists by oauth details
+    let userRecords = await db.select().from(users).where(
+      and(eq(users.oauthProvider, 'google'), eq(users.oauthId, googleId))
+    ).limit(1);
+
+    let user = userRecords[0];
+
+    // If no exact OAuth match, check by email
+    if (!user) {
+      const emailMatch = await db.select().from(users).where(eq(users.email, email)).limit(1);
+      
+      if (emailMatch.length > 0) {
+        user = emailMatch[0];
+        
+        // Security check: only link if the existing account is verified
+        if (!user.verified) {
+          await logActivity(user.id, 'google_link_failed', req, { reason: 'unverified_existing_account' });
+          return res.status(403).json({ error: "An unverified account exists with this email. Please verify it first or use password login." });
+        }
+
+        // Link the account
+        await db.update(users).set({
+          oauthProvider: 'google',
+          oauthId: googleId,
+          avatarUrl: user.avatarUrl || picture, // update avatar if missing
+        }).where(eq(users.id, user.id));
+
+        await logActivity(user.id, 'google_account_linked', req);
+      } else {
+        // Create new account
+        const newUsers = await db.insert(users).values({
+          name,
+          email,
+          role: "client",
+          verified: true, // Google verified the email
+          oauthProvider: 'google',
+          oauthId: googleId,
+          avatarUrl: picture,
+          // password is left null
+        }).returning();
+        user = newUsers[0];
+
+        await sendEmail(
+          user.email,
+          "🎉 Welcome to BubuWish!",
+          getWelcomeEmailHtml(user.name)
+        );
+        await logActivity(user.id, 'google_signup', req);
+      }
+    } else {
+      await logActivity(user.id, 'google_login', req);
+    }
+
+    // Suspicious login detection
+    const currentIp = req.headers['x-forwarded-for']?.toString().split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+    const isNewLocation = await isNewLoginLocation(user.id, currentIp);
+    if (isNewLocation) {
+      await logActivity(user.id, 'suspicious_login', req, { message: 'Google login from new IP address' });
+    }
+
+    // Reset lockouts if any
+    if (user.loginAttempts !== '0' || user.lockedUntil) {
+      await db.update(users).set({ loginAttempts: '0', lockedUntil: null }).where(eq(users.id, user.id));
+    }
+
+    const { accessToken, refreshToken } = await generateTokenPair(user.id, req);
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+
+    res.json({ 
+      accessToken,
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role, 
+        verified: user.verified,
+        avatarUrl: user.avatarUrl
+      } 
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Google authentication failed" });
+  }
+});
+
 authRouter.post("/refresh", async (req: any, res) => {
   try {
-    // Get refresh token from cookie (preferred) or body (fallback for migration)
     const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
     
     if (!refreshToken) {
-      // Silent fail - this is expected when user is not logged in
       return res.status(403).json({ error: "No refresh token" });
     }
 
-    const tokens = await refreshAccessToken(refreshToken);
+    const tokens = await refreshAccessToken(refreshToken, req);
     
     if (!tokens) {
-      // Clear invalid cookie
-      res.clearCookie('refreshToken');
+      res.clearCookie('refreshToken', { path: '/' });
       return res.status(403).json({ error: "Invalid or expired refresh token" });
     }
 
-    // Set new refresh token as httpOnly cookie
     res.cookie('refreshToken', tokens.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -223,26 +333,21 @@ authRouter.post("/refresh", async (req: any, res) => {
     res.json({ accessToken: tokens.accessToken });
   } catch (e) {
     console.error('Token refresh error:', e);
-    res.clearCookie('refreshToken');
+    res.clearCookie('refreshToken', { path: '/' });
     res.status(500).json({ error: "Token refresh failed" });
   }
 });
 
-// IMPROVED: Logout with token revocation
 authRouter.post("/logout", authenticate, async (req: any, res) => {
   try {
-    // Get refresh token from cookie (preferred) or body (fallback)
     const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
     
     if (refreshToken) {
       await revokeRefreshToken(refreshToken);
     }
 
-    // Clear refresh token cookie
     res.clearCookie('refreshToken', { path: '/' });
-
     await logActivity(req.user.id, 'logout', req);
-    
     res.json({ success: true, message: "Logged out successfully" });
   } catch (e) {
     console.error(e);
@@ -250,16 +355,11 @@ authRouter.post("/logout", authenticate, async (req: any, res) => {
   }
 });
 
-// NEW: Logout from all devices
 authRouter.post("/logout-all", authenticate, async (req: any, res) => {
   try {
     await revokeAllUserTokens(req.user.id);
-    
-    // Clear current refresh token cookie
     res.clearCookie('refreshToken', { path: '/' });
-    
     await logActivity(req.user.id, 'logout', req, { allDevices: true });
-    
     res.json({ success: true, message: "Logged out from all devices" });
   } catch (e) {
     console.error(e);
@@ -267,9 +367,38 @@ authRouter.post("/logout-all", authenticate, async (req: any, res) => {
   }
 });
 
+// Session Management Endpoints
+authRouter.get("/sessions", authenticate, async (req: any, res) => {
+  try {
+    const currentRefreshToken = req.cookies?.refreshToken;
+    const sessions = await getActiveSessions(req.user.id, currentRefreshToken);
+    res.json({ sessions });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Failed to fetch sessions" });
+  }
+});
+
+authRouter.delete("/sessions/:id", authenticate, async (req: any, res) => {
+  try {
+    const sessionId = req.params.id;
+    const success = await revokeSession(sessionId, req.user.id);
+    
+    if (success) {
+      await logActivity(req.user.id, 'session_revoked', req, { sessionId });
+      res.json({ success: true, message: "Session revoked" });
+    } else {
+      res.status(404).json({ error: "Session not found or already revoked" });
+    }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Failed to revoke session" });
+  }
+});
+
 authRouter.get("/me", authenticate, (req: any, res) => {
-  const { id, name, email, role, verified, avatarUrl } = req.user;
-  res.json({ user: { id, name, email, role, verified, avatarUrl } });
+  const { id, name, email, role, verified, avatarUrl, oauthProvider } = req.user;
+  res.json({ user: { id, name, email, role, verified, avatarUrl, oauthProvider } });
 });
 
 authRouter.post("/verify", authenticate, async (req: any, res) => {
@@ -411,7 +540,6 @@ authRouter.post("/forgot-password", async (req: any, res) => {
   res.json({ success: true, message: "If an account exists, an email was sent." });
 });
 
-// IMPROVED: Password reset with validation and activity logging
 authRouter.post("/reset-password", async (req: any, res) => {
   const { email, code, newPassword } = req.body;
   
@@ -420,7 +548,6 @@ authRouter.post("/reset-password", async (req: any, res) => {
   
   const userId = userRecords[0].id;
 
-  // Validate new password
   const passwordValidation = validatePassword(newPassword);
   if (!passwordValidation.valid) {
     return res.status(400).json({ 
@@ -437,19 +564,16 @@ authRouter.post("/reset-password", async (req: any, res) => {
   const { expiresAt } = records[0];
   if (new Date() > new Date(expiresAt)) return res.status(400).json({ error: "Code has expired" });
 
-  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_COST);
   await db.update(users).set({ password: hashedPassword, loginAttempts: '0' }).where(eq(users.id, userId));
   await db.delete(verificationCodes).where(and(eq(verificationCodes.userId, userId), eq(verificationCodes.purpose, 'reset_password')));
 
-  // Revoke all refresh tokens for security
   await revokeAllUserTokens(userId);
-
   await logActivity(userId, 'password_reset', req);
 
   res.json({ success: true, message: "Password updated successfully" });
 });
 
-// NEW: Change password (authenticated)
 authRouter.post("/change-password", authenticate, async (req: any, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -458,7 +582,10 @@ authRouter.post("/change-password", authenticate, async (req: any, res) => {
       return res.status(400).json({ error: "Current and new passwords are required" });
     }
 
-    // Validate new password
+    if (!req.user.password) {
+      return res.status(400).json({ error: "Account uses external authentication. Please set a password through reset flow." });
+    }
+
     const passwordValidation = validatePassword(newPassword);
     if (!passwordValidation.valid) {
       return res.status(400).json({ 
@@ -467,21 +594,17 @@ authRouter.post("/change-password", authenticate, async (req: any, res) => {
       });
     }
 
-    // Verify current password
     const isMatch = await bcrypt.compare(currentPassword, req.user.password);
     if (!isMatch) {
       return res.status(400).json({ error: "Current password is incorrect" });
     }
 
-    // Update password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_COST);
     await db.update(users)
       .set({ password: hashedPassword })
       .where(eq(users.id, req.user.id));
 
-    // Revoke all refresh tokens for security
     await revokeAllUserTokens(req.user.id);
-
     await logActivity(req.user.id, 'password_change', req);
 
     res.json({ success: true, message: "Password changed successfully. Please login again." });
@@ -491,11 +614,14 @@ authRouter.post("/change-password", authenticate, async (req: any, res) => {
   }
 });
 
-// NEW: Get activity logs
 authRouter.get("/activity", authenticate, async (req: any, res) => {
   try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const offset = (page - 1) * limit;
+
     const { getUserActivity } = await import("../lib/activityLogger");
-    const logs = await getUserActivity(req.user.id, 20);
+    const logs = await getUserActivity(req.user.id, limit, offset);
     
     res.json({ logs });
   } catch (e) {

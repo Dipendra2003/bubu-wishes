@@ -37,22 +37,27 @@ async function startServer() {
         scriptSrc: [
           "'self'", 
           "'unsafe-inline'", // unsafe-inline needed for Vite in dev
+          "https://accounts.google.com/gsi/client", // Google Identity Services
         ],
         styleSrc: [
           "'self'", 
           "'unsafe-inline'",
+          "https://accounts.google.com/gsi/style", // Google Identity Services
+          "https://fonts.googleapis.com", // Google Fonts
         ],
         imgSrc: ["'self'", "data:", "https:", "blob:"],
-        fontSrc: ["'self'", "data:"],
+        fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
         connectSrc: [
           "'self'",
           "ws://localhost:*", // WebSocket for dev tools
           "wss://localhost:*", // Secure WebSocket for dev tools
+          "https://accounts.google.com/gsi/", // Google Identity Services
         ],
         mediaSrc: ["'self'", "https:"],
         objectSrc: ["'none'"],
         frameSrc: [
           "'self'",
+          "https://accounts.google.com/gsi/", // Google Identity Services
         ],
         upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
       }
@@ -148,7 +153,9 @@ async function startServer() {
     await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "timezone" text;`);
 
     // Add auth improvement fields to users table
-    await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "google_id" text;`);
+    await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "oauth_provider" text;`);
+    await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "oauth_id" text;`);
+    await db.execute(sql`ALTER TABLE "users" ALTER COLUMN "password" DROP NOT NULL;`); // Allow OAuth accounts
     await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "login_attempts" text DEFAULT '0';`);
     await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "locked_until" timestamp;`);
 
@@ -214,10 +221,18 @@ async function startServer() {
         "user_id" uuid NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
         "token" text NOT NULL UNIQUE,
         "expires_at" timestamp NOT NULL,
+        "device_info" text,
+        "ip_address" text,
+        "last_active_at" timestamp DEFAULT now(),
         "created_at" timestamp NOT NULL DEFAULT now(),
         "revoked_at" timestamp
       );
     `);
+    
+    // Add columns if table already exists (for existing databases)
+    await db.execute(sql`ALTER TABLE "refresh_tokens" ADD COLUMN IF NOT EXISTS "device_info" text;`);
+    await db.execute(sql`ALTER TABLE "refresh_tokens" ADD COLUMN IF NOT EXISTS "ip_address" text;`);
+    await db.execute(sql`ALTER TABLE "refresh_tokens" ADD COLUMN IF NOT EXISTS "last_active_at" timestamp DEFAULT now();`);
 
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS "activity_logs" (
@@ -304,7 +319,7 @@ async function startServer() {
   }
 
   httpServer = app.listen(PORT, "0.0.0.0", async () => {
-    logger.info('Server started', { port: PORT, url: `http://localhost:${PORT}` });
+    console.log(`\n🚀 Server running at: http://localhost:${PORT}\n`);
     
     // Initialize birthday reminder scheduler
     try {
@@ -479,7 +494,11 @@ function validateEnv() {
     process.exit(1);
   }
   
-  logger.info('Environment validation passed');
+  if (!process.env.VITE_GOOGLE_CLIENT_ID) {
+    logger.warn('VITE_GOOGLE_CLIENT_ID not configured. Google OAuth will not work.');
+  }
+  
+  logger.debug('Environment validation passed');
 }
 
 validateEnv();

@@ -2,48 +2,60 @@ import { Queue } from "bullmq";
 import Redis from "ioredis";
 import { logger } from "../lib/logger";
 
-const REDIS_URL = process.env.REDIS_URL;
+const REDIS_URL = process.env.REDIS_URL?.trim();
 
 let connection: Redis | null = null;
 let emailQueue: Queue | null = null;
 let reconnectionAttempts = 0;
-const MAX_RECONNECTION_ATTEMPTS = 50;
+const MAX_RECONNECTION_ATTEMPTS = process.env.NODE_ENV === 'production' ? 10 : 5;
 
-// Only initialize Redis if REDIS_URL is explicitly set and not default localhost
-if (REDIS_URL && !REDIS_URL.includes('localhost')) {
+// Only initialize Redis if REDIS_URL is explicitly set, non-empty, and not default localhost
+const isRedisConfigured = Boolean(
+  REDIS_URL && 
+  REDIS_URL !== '""' && 
+  REDIS_URL !== "''" && 
+  !REDIS_URL.includes('localhost')
+);
+
+if (isRedisConfigured && REDIS_URL) {
   try {
     const redisOptions: any = {
       maxRetriesPerRequest: null,
       enableReadyCheck: false,
-      connectTimeout: 30000, // Increased timeout to 30 seconds
+      connectTimeout: 20000,
       keepAlive: 30000,
-      commandTimeout: 10000,
       lazyConnect: false,
       enableOfflineQueue: true,
+      family: 0, // CRITICAL: Fixes Upstash connection timeouts in Node > 18
       retryStrategy(times: number) {
         reconnectionAttempts = times;
         
         if (times > MAX_RECONNECTION_ATTEMPTS) {
-          logger.error(`Redis reconnection failed after ${MAX_RECONNECTION_ATTEMPTS} attempts`, undefined, { attempts: MAX_RECONNECTION_ATTEMPTS });
+          logger.warn(`Redis reconnection stopped after ${MAX_RECONNECTION_ATTEMPTS} attempts. Disabling queue.`);
           return null; // Stop reconnecting
         }
         
-        // Exponential backoff with max 10 seconds
-        const delay = Math.min(times * 500, 10000);
+        // Exponential backoff with max 5 seconds
+        const delay = Math.min(times * 500, 5000);
         logger.info('Redis retry attempt', { attempt: times, delayMs: delay });
         return delay;
       },
       reconnectOnError(err: Error) {
-        const targetErrors = ['READONLY', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'ENETUNREACH'];
-        if (targetErrors.some(e => err.message.includes(e))) {
-          logger.info('Redis reconnecting due to error', { error: err.message });
+        const msg = err.message || '';
+        // Never reconnect on DNS lookup failure (ENOTFOUND)
+        if (msg.includes('ENOTFOUND')) {
+          return false;
+        }
+        const targetErrors = ['READONLY', 'ECONNRESET', 'ETIMEDOUT', 'ENETUNREACH'];
+        if (targetErrors.some(e => msg.includes(e))) {
+          logger.info('Redis reconnecting due to error', { error: msg });
           return true;
         }
         return false;
       }
     };
 
-    // If using rediss:// (SSL), enable TLS
+    // If using rediss:// (SSL/TLS), enable TLS with rejectUnauthorized: false for maximum compatibility
     if (REDIS_URL.startsWith('rediss://')) {
       redisOptions.tls = {
         rejectUnauthorized: false
@@ -52,8 +64,13 @@ if (REDIS_URL && !REDIS_URL.includes('localhost')) {
 
     connection = new Redis(REDIS_URL, redisOptions);
     
-    connection.on('error', (err) => {
-      logger.error('Redis connection error', err, { code: (err as any).code });
+    connection.on('error', (err: any) => {
+      const isDnsError = err?.code === 'ENOTFOUND' || err?.message?.includes('ENOTFOUND');
+      if (isDnsError) {
+        logger.warn(`Redis host '${err?.hostname || 'unresolved'}' not found (ENOTFOUND). Please verify REDIS_URL.`);
+        return;
+      }
+      logger.error('Redis connection error', err, { code: err?.code });
     });
 
     connection.on('connect', () => {
@@ -62,11 +79,11 @@ if (REDIS_URL && !REDIS_URL.includes('localhost')) {
     });
 
     connection.on('ready', () => {
-      logger.info('Redis ready to accept commands');
+      logger.debug('Redis ready to accept commands');
     });
 
     connection.on('close', () => {
-      logger.warn('Redis connection closed - attempting reconnection');
+      logger.warn('Redis connection closed');
     });
 
     connection.on('reconnecting', (delay: number) => {
@@ -74,11 +91,12 @@ if (REDIS_URL && !REDIS_URL.includes('localhost')) {
     });
 
     connection.on('end', () => {
-      logger.error('Redis connection ended permanently');
+      logger.warn('Redis connection ended');
     });
 
     emailQueue = new Queue("email-queue", { 
       connection: connection as any,
+      skipVersionCheck: true,
       defaultJobOptions: {
         attempts: 3,
         backoff: {
@@ -95,13 +113,13 @@ if (REDIS_URL && !REDIS_URL.includes('localhost')) {
         }
       }
     });
-    logger.info('Redis email queue initialized with auto-cleanup');
+    logger.debug('Redis email queue initialized with auto-cleanup');
   } catch (e) {
     logger.error('Failed to initialize Redis', e as Error);
     logger.warn('Emails will be sent directly without queue');
   }
 } else {
-  logger.warn('Redis not configured - emails will be sent directly');
+  logger.info('Redis not configured - emails will be sent directly via fallback');
 }
 
 export { connection, emailQueue };

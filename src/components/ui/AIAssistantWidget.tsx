@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../../App';
+import { fetchWithCsrf } from '../../hooks/useCsrf';
 
 export default function AIAssistantWidget() {
   const { token } = useAuth();
@@ -31,7 +32,7 @@ export default function AIAssistantWidget() {
     setIsTyping(true);
 
     try {
-      const res = await fetch('/api/assistant-chat', {
+      const res = await fetchWithCsrf('/api/assistant-chat', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

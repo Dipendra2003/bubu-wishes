@@ -5,6 +5,7 @@ import { MessageCircleHeart, UserPlus, Loader2, Eye, EyeOff, Check, X } from 'lu
 import { motion } from 'motion/react';
 import { useToast } from '../ui/ToastProvider';
 import { fetchWithCsrf } from '../../hooks/useCsrf';
+import { useGoogleAuth } from '../../hooks/useGoogleAuth';
 
 export default function Signup() {
   const [name, setName] = useState('');
@@ -22,11 +23,15 @@ export default function Signup() {
   // Password validation state
   const passwordValidation = {
     minLength: password.length >= 8,
+    hasUpper: /[A-Z]/.test(password),
+    hasLower: /[a-z]/.test(password),
     hasNumber: /\d/.test(password),
     hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(password),
   };
 
   const isPasswordValid = passwordValidation.minLength && 
+                         passwordValidation.hasUpper &&
+                         passwordValidation.hasLower &&
                          passwordValidation.hasNumber && 
                          passwordValidation.hasSpecial;
 
@@ -100,6 +105,8 @@ export default function Signup() {
     }
   };
 
+  const { googleLoading } = useGoogleAuth('google-signup-button', 'signup_with');
+
   return (
     <div className="flex-1 w-full bg-[#FFF0F5] flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans font-medium relative overflow-hidden">
       <div className="absolute top-0 w-full p-6">
@@ -129,6 +136,17 @@ export default function Signup() {
         className="mt-8 w-full px-4 sm:px-0 sm:mx-auto sm:w-full sm:max-w-md relative z-10"
       >
         <div className="bg-white/80 backdrop-blur-xl py-8 px-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:rounded-3xl sm:px-10 border border-white">
+          <div id="google-signup-button" className="w-full flex justify-center mb-6 h-10"></div>
+          
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-transparent text-gray-500 font-bold">Or continue with email</span>
+            </div>
+          </div>
+
           <form className="space-y-5" onSubmit={handleSubmit}>
             {error && (
                <div className="bg-red-50 text-red-600 font-bold p-3 rounded-xl text-sm text-center">
@@ -210,6 +228,14 @@ export default function Signup() {
                   <div className={`flex items-center gap-2 ${passwordValidation.minLength ? 'text-green-600' : 'text-gray-500'}`}>
                     {passwordValidation.minLength ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
                     <span className="font-medium">At least 8 characters</span>
+                  </div>
+                  <div className={`flex items-center gap-2 ${passwordValidation.hasUpper ? 'text-green-600' : 'text-gray-500'}`}>
+                    {passwordValidation.hasUpper ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                    <span className="font-medium">Contains an uppercase letter</span>
+                  </div>
+                  <div className={`flex items-center gap-2 ${passwordValidation.hasLower ? 'text-green-600' : 'text-gray-500'}`}>
+                    {passwordValidation.hasLower ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                    <span className="font-medium">Contains a lowercase letter</span>
                   </div>
                   <div className={`flex items-center gap-2 ${passwordValidation.hasNumber ? 'text-green-600' : 'text-gray-500'}`}>
                     {passwordValidation.hasNumber ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}

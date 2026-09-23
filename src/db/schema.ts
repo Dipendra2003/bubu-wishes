@@ -4,7 +4,7 @@ export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
-  password: text('password').notNull(),
+  password: text('password'),
   role: text('role').default('client').notNull(),
   verified: boolean('verified').default(false).notNull(),
   suspended: boolean('suspended').default(false).notNull(),
@@ -15,6 +15,9 @@ export const users = pgTable('users', {
   birthday: timestamp('birthday'),
   location: text('location'),
   timezone: text('timezone'),
+  // OAuth fields (generic for Google/Facebook/Apple)
+  oauthProvider: text('oauth_provider'), // 'google', 'facebook', 'apple', etc.
+  oauthId: text('oauth_id'), // Provider-specific user ID
   loginAttempts: text('login_attempts').default('0'), // Track failed login attempts
   lockedUntil: timestamp('locked_until'), // Account lock timestamp
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -131,12 +134,16 @@ export const cardShareTokens = pgTable('card_share_tokens', {
   expiresAt: timestamp('expires_at'), // Optional expiration
 });
 
-// Refresh tokens for JWT token rotation
+// Refresh tokens for JWT token rotation (also serves as session records)
 export const refreshTokens = pgTable('refresh_tokens', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   token: text('token').notNull().unique(),
   expiresAt: timestamp('expires_at').notNull(),
+  // Session/device tracking
+  deviceInfo: text('device_info'), // Parsed user-agent (e.g., "Chrome on Windows")
+  ipAddress: text('ip_address'),
+  lastActiveAt: timestamp('last_active_at').defaultNow(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   revokedAt: timestamp('revoked_at'),
 });

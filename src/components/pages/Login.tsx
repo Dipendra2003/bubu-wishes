@@ -5,6 +5,7 @@ import { MessageCircleHeart, LogIn, Loader2, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useToast } from '../ui/ToastProvider';
 import { fetchWithCsrf } from '../../hooks/useCsrf';
+import { useGoogleAuth } from '../../hooks/useGoogleAuth';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -102,6 +103,8 @@ export default function Login() {
     }
   };
 
+  const { googleLoading } = useGoogleAuth('google-login-button', 'signin_with');
+
   return (
     <div className="flex-1 w-full bg-[#FFF0F5] flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans font-medium relative overflow-hidden">
       <div className="absolute top-0 w-full p-6">
@@ -139,6 +142,21 @@ export default function Login() {
         className="mt-8 w-full px-4 sm:px-0 sm:mx-auto sm:w-full sm:max-w-md relative z-10"
       >
         <div className="bg-white/80 backdrop-blur-xl py-8 px-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:rounded-3xl sm:px-10 border border-white">
+          {view === 'login' && (
+            <>
+              <div id="google-login-button" className="w-full flex justify-center mb-6 h-10"></div>
+              
+              <div className="relative mb-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-transparent text-gray-500 font-bold">Or continue with email</span>
+                </div>
+              </div>
+            </>
+          )}
+
           <form className="space-y-6" onSubmit={view === 'login' ? handleLoginSubmit : view === 'forgot' ? handleForgotSubmit : handleResetSubmit}>
             {error && (
               <div className="bg-red-50 text-red-600 font-bold p-3 rounded-xl text-sm text-center">
@@ -209,6 +227,11 @@ export default function Login() {
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
+                {view === 'reset' && (
+                  <p className="mt-2 text-xs text-gray-500 font-medium">
+                    Password must contain at least 8 characters, an uppercase letter, a lowercase letter, a number, and a special character.
+                  </p>
+                )}
               </div>
             )}
 

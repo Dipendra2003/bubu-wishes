@@ -1,12 +1,9 @@
 import express from "express";
 import { GoogleGenAI } from "@google/genai";
-import { authenticate, requireVerified } from "../middleware/auth";
 import { apiLimiter } from "../middleware/rateLimiter";
 
 export const aiRouter = express.Router();
 
-aiRouter.use(authenticate); // Require authentication for AI features
-aiRouter.use(requireVerified); // Require email verification for AI features
 aiRouter.use(apiLimiter);
 
 aiRouter.post("/generate-message", async (req, res) => {

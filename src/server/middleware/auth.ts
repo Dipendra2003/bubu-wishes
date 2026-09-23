@@ -27,8 +27,12 @@ export const authenticate = async (req: AuthenticatedRequest, res: Response, nex
     
     req.user = user;
     next();
-  } catch (err) {
-    return res.status(401).json({ error: "Invalid token" });
+  } catch (err: any) {
+    // Differentiate between expired and invalid tokens
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: "Token expired", code: "TOKEN_EXPIRED" });
+    }
+    return res.status(401).json({ error: "Invalid token", code: "TOKEN_INVALID" });
   }
 };
 

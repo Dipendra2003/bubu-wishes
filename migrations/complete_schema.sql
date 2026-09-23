@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS "users" (
   "birthday" timestamp,
   "location" text,
   "timezone" text,
-  "google_id" text UNIQUE,
+  "oauth_provider" text,
+  "oauth_id" text,
   "login_attempts" text DEFAULT '0',
   "locked_until" timestamp,
   "created_at" timestamp NOT NULL DEFAULT now()
@@ -165,6 +166,9 @@ CREATE TABLE IF NOT EXISTS "refresh_tokens" (
   "user_id" uuid NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
   "token" text NOT NULL UNIQUE,
   "expires_at" timestamp NOT NULL,
+  "device_info" text,
+  "ip_address" text,
+  "last_active_at" timestamp DEFAULT now(),
   "created_at" timestamp NOT NULL DEFAULT now(),
   "revoked_at" timestamp
 );
@@ -187,7 +191,7 @@ CREATE TABLE IF NOT EXISTS "activity_logs" (
 -- User Indexes
 CREATE INDEX IF NOT EXISTS "idx_users_email" ON "users"("email");
 CREATE INDEX IF NOT EXISTS "idx_users_role" ON "users"("role");
-CREATE INDEX IF NOT EXISTS "idx_users_google_id" ON "users"("google_id") WHERE "google_id" IS NOT NULL;
+CREATE INDEX IF NOT EXISTS "idx_users_oauth" ON "users"("oauth_provider", "oauth_id") WHERE "oauth_provider" IS NOT NULL;
 
 -- Contact Indexes
 CREATE INDEX IF NOT EXISTS "idx_contacts_user_id" ON "contacts"("user_id");
@@ -251,7 +255,8 @@ COMMENT ON TABLE "activity_logs" IS 'Tracks user security-related activities for
 -- ============================================================
 
 COMMENT ON COLUMN "users"."password" IS 'Hashed password (nullable for OAuth-only accounts)';
-COMMENT ON COLUMN "users"."google_id" IS 'Google OAuth user ID for Google Sign-In (unique)';
+COMMENT ON COLUMN "users"."oauth_provider" IS 'OAuth provider name (e.g. google, facebook)';
+COMMENT ON COLUMN "users"."oauth_id" IS 'OAuth provider specific user ID';
 COMMENT ON COLUMN "users"."login_attempts" IS 'Number of consecutive failed login attempts';
 COMMENT ON COLUMN "users"."locked_until" IS 'Timestamp until account is locked after too many failed attempts';
 COMMENT ON COLUMN "contacts"."birthday" IS 'Birthday date (year is ignored for annual reminders)';

@@ -10,6 +10,14 @@ export function validatePassword(password: string): PasswordValidationResult {
     errors.push('Password must be at least 8 characters long');
   }
 
+  if (!/[a-z]/.test(password)) {
+    errors.push('Password must contain at least one lowercase letter');
+  }
+
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter');
+  }
+
   if (!/\d/.test(password)) {
     errors.push('Password must contain at least one number');
   }
@@ -29,12 +37,13 @@ export function getPasswordStrength(password: string): 'weak' | 'medium' | 'stro
 
   if (password.length >= 8) strength++;
   if (password.length >= 12) strength++;
+  if (password.length >= 16) strength++;
   if (/[a-z]/.test(password)) strength++;
   if (/[A-Z]/.test(password)) strength++;
   if (/\d/.test(password)) strength++;
   if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength++;
 
-  if (strength <= 2) return 'weak';
-  if (strength <= 4) return 'medium';
+  if (strength <= 3) return 'weak';
+  if (strength <= 5) return 'medium';
   return 'strong';
 }

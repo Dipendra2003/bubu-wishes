@@ -11,7 +11,7 @@ export interface User {
   location?: string;
   timezone?: string;
   createdAt?: string;
-  googleId?: string | null;
+  oauthProvider?: string | null; // 'google', 'facebook', 'apple', etc.
   password?: string;
 }
 

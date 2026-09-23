@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { randomBytes, createHash } from "crypto";
+import { randomBytes, timingSafeEqual } from "crypto";
 
 /**
  * Simple double-submit cookie CSRF protection
@@ -43,7 +43,7 @@ export function csrfTokenGenerator(req: Request, res: Response, next: NextFuncti
 
 /**
  * Middleware to verify CSRF token on state-changing requests
- * Uses double-submit cookie pattern
+ * Uses double-submit cookie pattern with timing-safe comparison
  */
 export function csrfProtection(req: Request, res: Response, next: NextFunction) {
   // Skip CSRF check for safe methods
@@ -62,11 +62,19 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
     });
   }
   
-  // Tokens must match (constant-time comparison)
-  const cookieHash = createHash('sha256').update(cookieToken).digest('hex');
-  const headerHash = createHash('sha256').update(headerToken).digest('hex');
-  
-  if (cookieHash !== headerHash) {
+  // Constant-time comparison using timingSafeEqual
+  try {
+    const cookieBuf = Buffer.from(cookieToken, 'utf8');
+    const headerBuf = Buffer.from(headerToken, 'utf8');
+    
+    // timingSafeEqual requires same-length buffers
+    if (cookieBuf.length !== headerBuf.length || !timingSafeEqual(cookieBuf, headerBuf)) {
+      return res.status(403).json({ 
+        error: 'CSRF token invalid',
+        code: 'CSRF_INVALID' 
+      });
+    }
+  } catch {
     return res.status(403).json({ 
       error: 'CSRF token invalid',
       code: 'CSRF_INVALID' 

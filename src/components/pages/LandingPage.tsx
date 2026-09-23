@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { BubuDuduParty, BubuDuduLove, BubuDuduValentine, BubuDuduSleepy } from '../ThemeGraphics';
 import { useAuth } from '../../App';
+import BubuDuduRunningAnimation from '../BubuDuduRunningAnimation';
 
 export default function LandingPage() {
   const [params] = useSearchParams();
@@ -39,45 +40,49 @@ export default function LandingPage() {
   return (
     <div className="flex-1 w-full bg-[#FFF0F5] text-gray-900 font-sans flex flex-col font-medium overflow-x-hidden">
       {/* Navigation */}
-      <nav className="p-4 sm:p-6 w-full max-w-7xl mx-auto flex items-center justify-between relative z-50">
-        <div className="flex items-center gap-2">
-          <div className="bg-pink-500 rounded-full p-2 shadow-sm">
-            <MessageCircleHeart className="w-6 h-6 text-white" />
+      <nav className="fixed top-0 left-0 w-full z-50 bg-[#FFF0F5]/80 backdrop-blur-md border-b border-pink-100/50">
+        <div className="p-4 sm:p-6 w-full max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="bg-pink-500 rounded-full p-2 shadow-sm">
+              <MessageCircleHeart className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-pink-600 to-rose-400">
+              BubuWish
+            </span>
           </div>
-          <span className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-pink-600 to-rose-400">
-            BubuWish
-          </span>
-        </div>
-        <div className="flex items-center gap-4 font-bold text-sm sm:text-base">
-          {user ? (
-            <>
-              <span className="hidden sm:block text-sm font-bold text-pink-600">Hello, {user.name}</span>
-              <span className="hidden sm:block text-xs font-bold px-2 py-1 rounded-full bg-pink-100 text-pink-700 uppercase tracking-widest">{user.role}</span>
-              <Link 
-                to={user.role === 'admin' ? '/admin' : '/dashboard'}
-                className="flex items-center gap-2 px-4 py-2 text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-full transition"
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                <span className="hidden sm:block">Dashboard</span>
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-full transition"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:block">Logout</span>
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="hidden sm:block px-4 py-2 text-pink-600 hover:text-pink-700 transition">Log In</Link>
-              <Link to="/signup" className="px-6 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-full shadow-lg shadow-pink-200 transition transform hover:-translate-y-0.5">
-                Sign Up Free
-              </Link>
-            </>
-          )}
+          <div className="flex items-center gap-4 font-bold text-sm sm:text-base">
+            {user ? (
+              <>
+                <span className="hidden sm:block text-sm font-bold text-pink-600">Hello, {user.name}</span>
+                <span className="hidden sm:block text-xs font-bold px-2 py-1 rounded-full bg-pink-100 text-pink-700 uppercase tracking-widest">{user.role}</span>
+                <Link 
+                  to={user.role === 'admin' ? '/admin' : '/dashboard'}
+                  className="flex items-center gap-2 px-4 py-2 text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-full transition"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span className="hidden sm:block">Dashboard</span>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-4 py-2 text-pink-600 hover:text-pink-700 hover:bg-pink-50 rounded-full transition"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden sm:block">Logout</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="hidden sm:block px-4 py-2 text-pink-600 hover:text-pink-700 transition">Log In</Link>
+                <Link to="/signup" className="px-6 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-full shadow-lg shadow-pink-200 transition transform hover:-translate-y-0.5">
+                  Sign Up Free
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </nav>
+      {/* Spacer for fixed navbar */}
+      <div className="h-[72px] sm:h-[88px] w-full shrink-0"></div>
 
       <main className="flex-1 flex flex-col items-center w-full">
         {/* Hero Section */}
@@ -94,6 +99,8 @@ export default function LandingPage() {
             transition={{ duration: 1.5, delay: 0.2, ease: "easeOut" }}
             className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#B0E0E6] rounded-full blur-[140px] pointer-events-none z-0"
           />
+          
+
           
           <motion.div 
             style={{ opacity, scale }}
@@ -179,6 +186,11 @@ export default function LandingPage() {
               </div>
             </motion.div>
           </motion.div>
+        </section>
+
+        {/* 3D Bubu & Dudu Running with Cake Animation */}
+        <section className="w-full relative" style={{ height: '280px', background: 'linear-gradient(to bottom, #FFF0F5, #fff0f5ee, white)' }}>
+          <BubuDuduRunningAnimation />
         </section>
 
         {/* How It Works */}

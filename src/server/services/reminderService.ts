@@ -477,7 +477,7 @@ export async function processBirthdayReminders(): Promise<{
   wishesSent: number;
   errors: number;
 }> {
-  logger.info('Starting birthday reminder processing');
+  logger.debug('Starting birthday reminder processing');
   
   let remindersSent = 0;
   let wishesSent = 0;
@@ -485,7 +485,7 @@ export async function processBirthdayReminders(): Promise<{
   
   try {
     const checks = await getUpcomingBirthdays();
-    logger.info('Found contacts with upcoming birthdays', { count: checks.length });
+    logger.debug('Found contacts with upcoming birthdays', { count: checks.length });
     
     for (const check of checks) {
       try {
@@ -508,7 +508,7 @@ export async function processBirthdayReminders(): Promise<{
       }
     }
     
-    logger.info('Birthday processing complete', { remindersSent, wishesSent, errors });
+    logger.debug('Birthday processing complete', { remindersSent, wishesSent, errors });
     
     return {
       success: true,

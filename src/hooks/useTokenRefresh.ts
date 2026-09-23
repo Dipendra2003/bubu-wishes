@@ -22,10 +22,14 @@ export function useTokenRefresh() {
       }
 
       try {
+        const csrfRes = await fetch('/api/csrf-token', { credentials: 'include' });
+        const { csrfToken } = await csrfRes.json();
+        
         const response = await fetch('/api/auth/refresh', {
           method: 'POST',
           headers: { 
-            'Content-Type': 'application/json' 
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
           },
           credentials: 'include', // Important for cookies
         });

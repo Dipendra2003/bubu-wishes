@@ -216,7 +216,7 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
     
     setIsGenerating(true);
     try {
-      const response = await fetch('/api/generate-message', {
+      const response = await fetchWithCsrf('/api/generate-message', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

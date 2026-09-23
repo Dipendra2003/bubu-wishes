@@ -446,7 +446,7 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
                   </p>
 
                   {/* Simple Upload Cards - Always show the relevant upload button */}
-                  <div className="grid grid-cols-1 gap-4 mt-8">
+                  <div className={cn("grid gap-4 mt-8", typeFilter === 'all' ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1")}>
                     {typeFilter === 'all' && (
                       <>
                         <label className="cursor-pointer group">

@@ -33,6 +33,8 @@ router.get('/me', async (req: AuthenticatedRequest, res) => {
         location: users.location,
         timezone: users.timezone,
         createdAt: users.createdAt,
+        password: users.password,
+        oauthProvider: users.oauthProvider,
       })
       .from(users)
       .where(eq(users.id, userId))
@@ -42,7 +44,25 @@ router.get('/me', async (req: AuthenticatedRequest, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json(result[0]);
+    const user = result[0];
+    
+    // Provide a comprehensive user object including Google auth status
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      verified: user.verified,
+      avatarUrl: user.avatarUrl,
+      bio: user.bio,
+      phone: user.phone,
+      birthday: user.birthday,
+      location: user.location,
+      timezone: user.timezone,
+      createdAt: user.createdAt,
+      hasPassword: !!user.password,
+      isGoogleLinked: user.oauthProvider === 'google'
+    });
   } catch (error) {
     console.error('Error fetching profile:', error);
     res.status(500).json({ error: 'Failed to fetch profile' });
@@ -180,7 +200,7 @@ router.post('/set-password', async (req: AuthenticatedRequest, res) => {
 
     // Get current user
     const result = await db
-      .select({ password: users.password, googleId: users.googleId })
+      .select({ password: users.password, oauthProvider: users.oauthProvider })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);

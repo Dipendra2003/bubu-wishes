@@ -34,7 +34,7 @@ class Logger {
   }
 
   debug(message: string, context?: LogContext) {
-    if (this.environment === 'development') {
+    if (process.env.LOG_LEVEL === 'debug') {
       console.log(this.formatLog('debug', message, context));
     }
   }
@@ -97,7 +97,7 @@ export function requestLoggerMiddleware(req: any, res: any, next: any) {
   
   res.on('finish', () => {
     const duration = Date.now() - start;
-    logger.info('HTTP Request', {
+    logger.debug('HTTP Request', {
       requestId: req.requestId,
       method: req.method,
       path: req.path,

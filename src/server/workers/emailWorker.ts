@@ -64,6 +64,7 @@ if (connection && process.env.REDIS_URL) {
       }
     }, { 
       connection: connection as any,
+      skipVersionCheck: true,
       concurrency: 5,
       stalledInterval: 30000,
       maxStalledCount: 2,
@@ -90,13 +91,12 @@ if (connection && process.env.REDIS_URL) {
     });
 
     emailWorker.on("error", (err) => {
-      // Don't crash on Redis connection errors - they will auto-retry
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       
-      // Check if it's a connection error that will auto-recover
-      if (errorMessage.includes('ETIMEDOUT') || 
+      if (errorMessage.includes('ENOTFOUND')) {
+        logger.warn('Email worker: Redis host resolution failed (ENOTFOUND). Please check REDIS_URL.');
+      } else if (errorMessage.includes('ETIMEDOUT') || 
           errorMessage.includes('ECONNRESET') || 
-          errorMessage.includes('ENOTFOUND') ||
           errorMessage.includes('ENETUNREACH')) {
         logger.warn('Email worker connection error (will auto-retry)', { error: errorMessage });
       } else {
@@ -108,7 +108,7 @@ if (connection && process.env.REDIS_URL) {
       logger.warn('Email worker closed');
     });
 
-    logger.info('Email worker started with auto-cleanup enabled');
+    logger.debug('Email worker started with auto-cleanup enabled');
   } catch (e) {
     logger.error('Failed to start email worker', e as Error);
   }
