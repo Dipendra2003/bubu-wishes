@@ -13,24 +13,28 @@ export const pool = new Pool({
   ssl: databaseUrl.includes('sslmode=') ? {
     rejectUnauthorized: false
   } : false,
-  max: parseInt(process.env.DB_POOL_MAX || '20', 10),
-  min: parseInt(process.env.DB_POOL_MIN || '2', 10),
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
-  maxUses: 7500,
+  max: parseInt(process.env.DB_POOL_MAX || '10', 10),
+  min: 0, // Serverless PgBouncer pooler terminates idle connections; do not hold stale sockets
+  idleTimeoutMillis: 15000, // Recycle idle connections promptly
+  connectionTimeoutMillis: 30000, // 30s timeout for cold start / wake-up
+  maxUses: 1000,
   allowExitOnIdle: false,
-  statement_timeout: 30000,
-  query_timeout: 30000,
+  statement_timeout: 45000,
+  query_timeout: 45000,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
 });
 
-// Enhanced connection lifecycle logging with error recovery
-pool.on('error', (err, client) => {
-  logger.critical('Unexpected database pool error', err);
-  
-  // Log to monitoring service in production
-  if (process.env.NODE_ENV === 'production') {
-    // TODO: Send to error tracking (Sentry, DataDog, etc.)
+// Enhanced connection lifecycle logging with serverless error recovery
+pool.on('error', (err: any) => {
+  const msg = err?.message || '';
+  // Cloud serverless Postgres (Neon/Supabase) terminates idle connections from the server side.
+  // pg-pool removes the dead client automatically; log as warning rather than critical exception.
+  if (msg.includes('Connection terminated') || msg.includes('ECONNRESET') || msg.includes('timeout')) {
+    logger.warn('Database idle connection dropped by serverless pooler (auto-reconnecting on next query)');
+    return;
   }
+  logger.critical('Unexpected database pool error', err);
 });
 
 pool.on('connect', (client) => {
