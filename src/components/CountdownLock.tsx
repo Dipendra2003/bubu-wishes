@@ -50,7 +50,7 @@ export function CountdownLock({ unlockDate, lockScreenImage, allowSkipLock, them
 
   if (isUnlocked) {
     return (
-      <div className={`min-h-[100dvh] w-full flex items-center justify-center p-6 relative overflow-hidden`}>
+      <div className={`min-h-dvh w-full flex items-center justify-center p-6 relative overflow-hidden`}>
         <div className="absolute inset-0 bg-white/20 backdrop-blur-sm z-0"></div>
         <motion.div 
           initial={{ scale: 0.8, opacity: 0, y: 20 }}
@@ -83,7 +83,7 @@ export function CountdownLock({ unlockDate, lockScreenImage, allowSkipLock, them
   }
 
   return (
-    <div className={`min-h-[100dvh] w-full flex flex-col items-center justify-center p-6 relative overflow-hidden`}>
+    <div className={`min-h-dvh w-full flex flex-col items-center justify-center p-6 relative overflow-hidden`}>
       {/* Animated background elements */}
       <div className="absolute inset-0 opacity-30 pointer-events-none overflow-hidden">
         {[...Array(20)].map((_, i) => (

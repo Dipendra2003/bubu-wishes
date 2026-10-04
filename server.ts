@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
@@ -22,7 +23,15 @@ let httpServer: Server | null = null;
 
 async function startServer() {
   const app = express();
-  app.set("trust proxy", 1);
+  const trustProxyEnv = process.env.TRUST_PROXY;
+  if (trustProxyEnv !== undefined) {
+    if (trustProxyEnv === 'true') app.set("trust proxy", true);
+    else if (trustProxyEnv === 'false') app.set("trust proxy", false);
+    else if (!isNaN(Number(trustProxyEnv))) app.set("trust proxy", Number(trustProxyEnv));
+    else app.set("trust proxy", trustProxyEnv);
+  } else {
+    app.set("trust proxy", 1);
+  }
   const PORT = 3000;
 
   // Request ID and logging middleware (before everything)
@@ -38,6 +47,8 @@ async function startServer() {
           "'self'", 
           "'unsafe-inline'", // unsafe-inline needed for Vite in dev
           "https://accounts.google.com/gsi/client", // Google Identity Services
+          "https://www.youtube.com",
+          "https://s.ytimg.com",
         ],
         styleSrc: [
           "'self'", 
@@ -45,24 +56,50 @@ async function startServer() {
           "https://accounts.google.com/gsi/style", // Google Identity Services
           "https://fonts.googleapis.com", // Google Fonts
         ],
-        imgSrc: ["'self'", "data:", "https:", "blob:"],
+        imgSrc: [
+          "'self'", 
+          "data:", 
+          "https:", 
+          "blob:", 
+          "https://i.ytimg.com", 
+          "https://*.ytimg.com",
+          "https://res.cloudinary.com",
+          "https://*.cloudinary.com",
+        ],
         fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
         connectSrc: [
           "'self'",
           "ws://localhost:*", // WebSocket for dev tools
           "wss://localhost:*", // Secure WebSocket for dev tools
           "https://accounts.google.com/gsi/", // Google Identity Services
+          "https://www.youtube.com",
+          "https://*.googlevideo.com",
+          "https://api.cloudinary.com",
+          "https://*.cloudinary.com",
+          "https://res.cloudinary.com",
         ],
-        mediaSrc: ["'self'", "https:"],
+        mediaSrc: [
+          "'self'", 
+          "https:", 
+          "blob:", 
+          "data:", 
+          "https://*.googlevideo.com",
+          "https://res.cloudinary.com",
+          "https://*.cloudinary.com",
+        ],
         objectSrc: ["'none'"],
         frameSrc: [
           "'self'",
           "https://accounts.google.com/gsi/", // Google Identity Services
+          "https://www.youtube.com",
+          "https://www.youtube-nocookie.com",
+          "https://*.youtube.com",
         ],
         upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
       }
     },
     crossOriginEmbedderPolicy: false, // Allow external media
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
   }));
   
   // Request timeout middleware (30 seconds)
@@ -292,7 +329,7 @@ async function startServer() {
     app.use(vite.middlewares);
     
     // Fallback for all non-API routes in development (SPA support)
-    app.use('*', async (req, res, next) => {
+    app.use(async (req, res, next) => {
       const url = req.originalUrl;
       try {
         // Read and transform index.html
@@ -313,7 +350,7 @@ async function startServer() {
     app.use(express.static(distPath));
     
     // Fallback for all routes in production (SPA support)
-    app.get('*', (_req, res) => {
+    app.get('/{*splat}', (_req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
@@ -438,12 +475,14 @@ function validateEnv() {
   const required = [
     'DATABASE_URL',
     'JWT_SECRET',
-    'SMTP_HOST',
-    'SMTP_USER',
-    'SMTP_PASS',
     'CRON_SECRET',
     'APP_URL'
   ];
+  
+  // Require either RESEND_API_KEY (for Render/HTTPS) or SMTP credentials (for Nodemailer)
+  if (!process.env.RESEND_API_KEY) {
+    required.push('SMTP_HOST', 'SMTP_USER', 'SMTP_PASS');
+  }
   
   const missing = required.filter(key => !process.env[key]);
   

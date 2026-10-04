@@ -107,8 +107,20 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
   const [filteredMedia, setFilteredMedia] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'image' | 'audio' | 'video'>(filterType);
+  
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  
+  // Bulk Actions & Drag Drop
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDragActive, setIsDragActive] = useState(false);
+  
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -119,48 +131,61 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
 
   useEffect(() => {
     if (isOpen) {
-      fetchMedia();
+      setPage(1);
+      fetchMedia(1, true);
     }
-  }, [isOpen]);
+  }, [isOpen, typeFilter]);
 
+  // Debounced Search
   useEffect(() => {
-    setTypeFilter(filterType);
-  }, [filterType]);
+    const timer = setTimeout(() => {
+      if (isOpen) {
+        setPage(1);
+        fetchMedia(1, true);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-  useEffect(() => {
-    let filtered = media;
-    
-    if (typeFilter !== 'all') {
-      filtered = filtered.filter(m => m.mediaType === typeFilter);
-    }
-    
-    if (searchTerm) {
-      filtered = filtered.filter(m => 
-        m.fileName?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    
-    setFilteredMedia(filtered);
-  }, [media, searchTerm, typeFilter]);
-
-  const fetchMedia = async () => {
+  const fetchMedia = async (pageNum = page, reset = false) => {
     if (!token) return;
     
-    setLoading(true);
+    if (reset) setLoading(true);
+    else setIsLoadingMore(true);
+    
     try {
-      const response = await fetch('/api/media-library', {
+      const params = new URLSearchParams({
+        page: pageNum.toString(),
+        limit: '30'
+      });
+      if (typeFilter !== 'all') params.append('type', typeFilter);
+      if (searchTerm) params.append('search', searchTerm);
+      
+      const response = await fetch(`/api/media-library?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       
       if (!response.ok) throw new Error('Failed to fetch media');
       
       const data = await response.json();
-      setMedia(data.media || []);
+      
+      if (reset) {
+        setMedia(data.media || []);
+        setFilteredMedia(data.media || []);
+      } else {
+        setMedia(prev => [...prev, ...(data.media || [])]);
+        setFilteredMedia(prev => [...prev, ...(data.media || [])]);
+      }
+      
+      setHasMore(data.pagination?.hasMore || false);
+      setPage(pageNum);
+      
     } catch (error: any) {
       console.error('Error fetching media:', error);
       toast('Failed to load media library', 'error');
     } finally {
       setLoading(false);
+      setIsLoadingMore(false);
     }
   };
 
@@ -168,32 +193,128 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
     if (!files || !token) return;
     
     setUploading(true);
+    setUploadProgress(0);
+    
+    // Convert to array and process sequentially to show progress
+    const fileArray = Array.from(files);
+    let successCount = 0;
     
     try {
-      for (const file of Array.from(files)) {
+      // First get CSRF token
+      const csrfResponse = await fetch('/api/csrf-token');
+      const { csrfToken } = await csrfResponse.json();
+      
+      for (let i = 0; i < fileArray.length; i++) {
+        const file = fileArray[i];
         const formData = new FormData();
         formData.append('file', file);
         formData.append('type', type);
         
-        const response = await fetchWithCsrf('/api/media-library', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
+        await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/api/media-library');
+          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+          xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+          
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const fileProgress = (event.loaded / event.total) * 100;
+              // Calculate overall progress across multiple files
+              const overallProgress = ((i * 100) + fileProgress) / fileArray.length;
+              setUploadProgress(Math.round(overallProgress));
+            }
+          };
+          
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              successCount++;
+              resolve(xhr.response);
+            } else {
+              try {
+                const error = JSON.parse(xhr.response);
+                reject(new Error(error.error || 'Upload failed'));
+              } catch {
+                reject(new Error('Upload failed'));
+              }
+            }
+          };
+          
+          xhr.onerror = () => reject(new Error('Network error during upload'));
+          xhr.send(formData);
         });
-        
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Upload failed');
-        }
       }
       
-      toast('Media uploaded successfully! 📤', 'success');
-      fetchMedia();
+      if (successCount > 0) {
+        toast(`${successCount} media file(s) uploaded successfully! 📤`, 'success');
+        setPage(1);
+        fetchMedia(1, true);
+      }
     } catch (error: any) {
       console.error('Upload error:', error);
       toast(error.message || 'Failed to upload media', 'error');
     } finally {
       setUploading(false);
+      setUploadProgress(0);
+      setIsDragActive(false);
+    }
+  };
+  
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    
+    try {
+      const response = await fetchWithCsrf('/api/media-library/bulk-delete', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ mediaIds: Array.from(selectedIds) }),
+      });
+      
+      if (!response.ok) throw new Error('Bulk delete failed');
+      
+      toast(`Deleted ${selectedIds.size} items successfully`, 'success');
+      setSelectedIds(new Set());
+      setIsSelectMode(false);
+      
+      // Refresh
+      setPage(1);
+      fetchMedia(1, true);
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      toast('Failed to delete selected media', 'error');
+    }
+  };
+  
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragActive(true);
+  };
+  
+  const onDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragActive(false);
+  };
+  
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      const mime = file.type.toLowerCase();
+      let type: 'image' | 'audio' | 'video' | null = null;
+      
+      if (mime.startsWith('image/')) type = 'image';
+      else if (mime.startsWith('audio/')) type = 'audio';
+      else if (mime.startsWith('video/')) type = 'video';
+      
+      if (type && (typeFilter === 'all' || typeFilter === type)) {
+        handleUpload(e.dataTransfer.files, type);
+      } else {
+        toast(`Cannot upload this file type in the ${typeFilter} tab`, 'error');
+      }
     }
   };
 
@@ -208,7 +329,8 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
       
       toast('Media deleted successfully', 'success');
       setDeleteConfirm(null);
-      fetchMedia();
+      setPage(1);
+      fetchMedia(1, true);
     } catch (error: any) {
       console.error('Delete error:', error);
       toast('Failed to delete media', 'error');
@@ -236,7 +358,8 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
       toast('Media renamed successfully', 'success');
       setEditingId(null);
       setEditName('');
-      fetchMedia();
+      setPage(1);
+      fetchMedia(1, true);
     } catch (error: any) {
       console.error('Rename error:', error);
       toast('Failed to rename media', 'error');
@@ -275,16 +398,7 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
   };
 
   const toggleVideoPlay = (url: string) => {
-    if (playingVideo === url) {
-      videoRef.current?.pause();
-      setPlayingVideo(null);
-    } else {
-      if (videoRef.current) {
-        videoRef.current.src = url;
-        videoRef.current.play();
-      }
-      setPlayingVideo(url);
-    }
+    setPlayingVideo(playingVideo === url ? null : url);
   };
 
   const formatFileSize = (bytes: string | null) => {
@@ -349,6 +463,57 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
               <X className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
             </button>
           </div>
+
+          {/* Bulk Actions Header (shows when select mode is active) */}
+          <AnimatePresence>
+            {isSelectMode && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="bg-pink-50 border-b border-pink-100 overflow-hidden"
+              >
+                <div className="px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => {
+                        setIsSelectMode(false);
+                        setSelectedIds(new Set());
+                      }}
+                      className="p-1.5 hover:bg-pink-100 rounded-lg text-pink-700 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    <span className="font-semibold text-pink-700 text-sm">
+                      {selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        const newSelected = new Set<string>();
+                        if (selectedIds.size < filteredMedia.length) {
+                          filteredMedia.forEach(m => newSelected.add(m.id));
+                        }
+                        setSelectedIds(newSelected);
+                      }}
+                      className="px-3 py-1.5 bg-white border border-pink-200 text-pink-700 hover:bg-pink-100 text-xs font-semibold rounded-lg transition-colors"
+                    >
+                      {selectedIds.size === filteredMedia.length ? 'Deselect All' : 'Select All'}
+                    </button>
+                    <button
+                      onClick={handleBulkDelete}
+                      disabled={selectedIds.size === 0}
+                      className="px-3 py-1.5 bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Simple Toolbar */}
           <div className="px-3 sm:px-6 py-3 sm:py-4 bg-gray-50 border-b border-gray-100">
@@ -417,12 +582,38 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
                   <Video className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="hidden sm:inline">Videos</span>
                 </button>
+                <button
+                  onClick={() => setIsSelectMode(!isSelectMode)}
+                  className={cn(
+                    "px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap ml-auto",
+                    isSelectMode ? "bg-pink-100 text-pink-700 border-pink-200 border" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                  )}
+                >
+                  <Check className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">{isSelectMode ? 'Cancel Select' : 'Select'}</span>
+                </button>
               </div>
             </div>
           </div>
 
           {/* Simple Media Grid */}
-          <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-gray-50">
+          <div 
+            className={cn(
+              "flex-1 overflow-y-auto p-3 sm:p-6 transition-colors", 
+              isDragActive ? "bg-pink-50 border-2 border-dashed border-pink-300 inset-4" : "bg-gray-50"
+            )}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+          >
+            {isDragActive && (
+              <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-3xl border-4 border-dashed border-pink-400">
+                <Upload className="w-16 h-16 text-pink-500 animate-bounce mb-4" />
+                <h2 className="text-2xl font-bold text-gray-800">Drop files here</h2>
+                <p className="text-gray-500 mt-2">Upload image, audio, or video</p>
+              </div>
+            )}
+            
             {loading ? (
               <div className="flex flex-col items-center justify-center h-full">
                 <Loader2 className="w-10 h-10 sm:w-12 sm:h-12 text-pink-600 animate-spin mb-3" />
@@ -431,7 +622,10 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
             ) : uploading ? (
               <div className="flex flex-col items-center justify-center h-full">
                 <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-pink-600 animate-pulse mb-3" />
-                <p className="text-gray-500 text-xs sm:text-sm font-medium">Uploading...</p>
+                <p className="text-gray-500 text-xs sm:text-sm font-medium mb-4">Uploading... {uploadProgress}%</p>
+                <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-pink-500 transition-all duration-300 ease-out" style={{ width: `${uploadProgress}%` }}></div>
+                </div>
               </div>
             ) : filteredMedia.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full px-4">
@@ -558,11 +752,34 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
                     layout
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="group relative bg-white rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer border border-gray-200 hover:border-pink-400"
-                    onClick={() => handleSelect(item)}
+                    className={cn(
+                      "group relative bg-white rounded-xl overflow-hidden hover:shadow-lg transition-all cursor-pointer border",
+                      isSelectMode && selectedIds.has(item.id) ? "border-pink-500 ring-2 ring-pink-500 ring-offset-2" : "border-gray-200 hover:border-pink-400"
+                    )}
+                    onClick={(e) => {
+                      if (isSelectMode) {
+                        e.preventDefault();
+                        const newSet = new Set(selectedIds);
+                        if (newSet.has(item.id)) newSet.delete(item.id);
+                        else newSet.add(item.id);
+                        setSelectedIds(newSet);
+                      } else {
+                        handleSelect(item);
+                      }
+                    }}
                   >
                     {/* Media Preview with Enhanced Styling */}
-                    <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative overflow-hidden">
+                    <div className="aspect-square bg-linear-to-br from-gray-100 to-gray-200 flex items-center justify-center relative overflow-hidden">
+                      {isSelectMode && (
+                        <div className="absolute top-3 left-3 z-20">
+                          <div className={cn(
+                            "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors shadow-sm",
+                            selectedIds.has(item.id) ? "bg-pink-500 border-pink-500 text-white" : "bg-white/80 border-gray-400 backdrop-blur-sm"
+                          )}>
+                            {selectedIds.has(item.id) && <Check className="w-3.5 h-3.5" />}
+                          </div>
+                        </div>
+                      )}
                       {item.mediaType === 'image' ? (
                         <>
                           <img
@@ -581,17 +798,23 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
                                 alt={item.fileName || 'Video'}
                                 className="w-full h-full object-cover"
                               />
-                              <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                                <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-2xl">
+                              <div 
+                                className="absolute inset-0 bg-black/30 flex items-center justify-center hover:bg-black/40 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleVideoPlay(item.mediaUrl);
+                                }}
+                              >
+                                <div className="w-16 h-16 bg-linear-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-2xl hover:scale-110 transition-transform">
                                   <Play className="w-8 h-8 text-white ml-1" />
                                 </div>
                               </div>
                             </>
                           ) : (
                             <div className="flex flex-col items-center justify-center p-4 relative h-full">
-                              <div className="absolute inset-0 bg-gradient-to-br from-orange-100 to-red-100"></div>
+                              <div className="absolute inset-0 bg-linear-to-br from-orange-100 to-red-100"></div>
                               <div className="relative z-10 flex flex-col items-center">
-                                <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mb-3 shadow-lg">
+                                <div className="w-16 h-16 bg-linear-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mb-3 shadow-lg">
                                   <Video className="w-8 h-8 text-white" />
                                 </div>
                                 <button
@@ -599,7 +822,7 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
                                     e.stopPropagation();
                                     toggleVideoPlay(item.mediaUrl);
                                   }}
-                                  className="p-3 bg-white hover:bg-gradient-to-r hover:from-orange-500 hover:to-red-500 text-orange-500 hover:text-white rounded-full transition-all shadow-lg hover:shadow-xl group/play"
+                                  className="p-3 bg-white hover:bg-linear-to-r hover:from-orange-500 hover:to-red-500 text-orange-500 hover:text-white rounded-full transition-all shadow-lg hover:shadow-xl group/play"
                                 >
                                   {playingVideo === item.mediaUrl ? (
                                     <Pause className="w-5 h-5" />
@@ -613,9 +836,9 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center p-4 relative">
-                          <div className="absolute inset-0 bg-gradient-to-br from-purple-100 to-pink-100"></div>
+                          <div className="absolute inset-0 bg-linear-to-br from-purple-100 to-pink-100"></div>
                           <div className="relative z-10 flex flex-col items-center">
-                            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mb-3 shadow-lg">
+                            <div className="w-16 h-16 bg-linear-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mb-3 shadow-lg">
                               <Music className="w-8 h-8 text-white" />
                             </div>
                             <button
@@ -623,7 +846,7 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
                                 e.stopPropagation();
                                 toggleAudioPlay(item.mediaUrl);
                               }}
-                              className="p-3 bg-white hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 text-purple-500 hover:text-white rounded-full transition-all shadow-lg hover:shadow-xl group/play"
+                              className="p-3 bg-white hover:bg-linear-to-r hover:from-purple-500 hover:to-pink-500 text-purple-500 hover:text-white rounded-full transition-all shadow-lg hover:shadow-xl group/play"
                             >
                               {playingAudio === item.mediaUrl ? (
                                 <Pause className="w-5 h-5" />
@@ -637,13 +860,15 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
                       
                       {/* Usage Badge with Enhanced Design */}
                       {parseInt(item.usageCount) > 0 && (
-                        <div className="absolute top-3 right-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
+                        <div className="absolute top-3 right-3 bg-linear-to-r from-pink-500 to-purple-500 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
                           <span>{item.usageCount}×</span>
                         </div>
                       )}
 
-                      {/* Selection Indicator */}
-                      <div className="absolute inset-0 border-4 border-pink-500 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                      {/* Selection Indicator (when not in select mode) */}
+                      {!isSelectMode && (
+                        <div className="absolute inset-0 border-4 border-pink-500 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                      )}
                     </div>
 
                     {/* Enhanced Info Section */}
@@ -726,6 +951,26 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
                 ))}
               </div>
             )}
+            
+            {/* Load More Button */}
+            {!loading && hasMore && (
+              <div className="flex justify-center mt-8 pb-4">
+                <button
+                  onClick={() => fetchMedia(page + 1)}
+                  disabled={isLoadingMore}
+                  className="px-6 py-2.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-pink-300 rounded-xl font-semibold shadow-sm transition-all flex items-center gap-2"
+                >
+                  {isLoadingMore ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-pink-500" />
+                      Loading...
+                    </>
+                  ) : (
+                    'Load More'
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Audio Player (hidden) */}
@@ -734,15 +979,42 @@ export function MediaLibrary({ isOpen, onClose, onSelect, filterType = 'all' }: 
             onEnded={() => setPlayingAudio(null)}
             className="hidden"
           />
-
-          {/* Video Player (hidden) */}
-          <video
-            ref={videoRef}
-            onEnded={() => setPlayingVideo(null)}
-            className="hidden"
-            controls
-          />
         </motion.div>
+
+        {/* Video Player Modal */}
+        <AnimatePresence>
+          {playingVideo && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[10000] flex items-center justify-center p-4"
+              onClick={() => setPlayingVideo(null)}
+            >
+              <button 
+                className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
+                onClick={() => setPlayingVideo(null)}
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <motion.div
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.95 }}
+                className="w-full max-w-4xl max-h-[80vh] bg-black rounded-2xl overflow-hidden shadow-2xl relative"
+                onClick={e => e.stopPropagation()}
+              >
+                <video
+                  src={playingVideo}
+                  controls
+                  autoPlay
+                  className="w-full h-full object-contain"
+                  onEnded={() => setPlayingVideo(null)}
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Delete Confirmation Modal */}
         <AnimatePresence>

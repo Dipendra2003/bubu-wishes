@@ -1,0 +1,65 @@
+services:
+  - type: web
+    name: bubuwish-card
+    env: node
+    region: oregon # Recommended to be close to us-east-1 Neon DB
+    plan: free
+    buildCommand: "npm install && npm run build"
+    startCommand: "npm start"
+    healthCheckPath: "/api/health"
+    envVars:
+      # --- System ---
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "true"
+      
+      # --- URLs (Set in dashboard after creation) ---
+      - key: APP_URL
+        sync: false 
+      
+      # --- Security (Render will auto-generate secure values) ---
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
+
+      # --- Database & Redis ---
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+
+      # --- Email (Resend) ---
+      - key: RESEND_API_KEY
+        sync: false
+      - key: FROM_EMAIL
+        value: "BubuWish <noreply@yourdomain.com>"
+
+      # --- Cloudinary ---
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: VITE_CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: VITE_CLOUDINARY_UPLOAD_PRESET
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: VITE_CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      # --- AI (Google Gemini) ---
+      - key: GEMINI_API_KEY
+        sync: false
+
+      # --- Google OAuth (Optional) ---
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false

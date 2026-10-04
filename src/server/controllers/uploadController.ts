@@ -27,11 +27,19 @@ export const uploadMediaController = async (req: Request | any, res: Response) =
       if (file.size > 10 * 1024 * 1024) {
         return res.status(400).json({ error: "Audio exceeds 10MB limit" });
       }
+    } else if (type === 'video') {
+      const validTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
+      if (!validTypes.includes(file.mimetype)) {
+        return res.status(400).json({ error: "Invalid video format. Allowed: mp4, webm, ogg, mov" });
+      }
+      if (file.size > 30 * 1024 * 1024) {
+        return res.status(400).json({ error: "Video exceeds 30MB limit" });
+      }
     } else {
-        return res.status(400).json({ error: "Invalid type specified. Must be 'image' or 'audio'" });
+        return res.status(400).json({ error: "Invalid type specified. Must be 'image', 'audio', or 'video'" });
     }
 
-    const folder = type === 'image' ? 'cards/images' : 'cards/audio';
+    const folder = type === 'image' ? 'cards/images' : type === 'audio' ? 'cards/audio' : 'cards/videos';
     const resourceType = type === 'audio' ? 'video' : 'image'; // Cloudinary treats audio as video for some endpoints or 'auto'
 
     const uploadResult: any = await uploadMedia(file.buffer, folder, 'auto');

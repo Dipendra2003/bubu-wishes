@@ -46,7 +46,7 @@ export default function LandingPage() {
             <div className="bg-pink-500 rounded-full p-2 shadow-sm">
               <MessageCircleHeart className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-pink-600 to-rose-400">
+            <span className="text-2xl font-black bg-clip-text text-transparent bg-linear-to-r from-pink-600 to-rose-400">
               BubuWish
             </span>
           </div>
@@ -97,7 +97,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: 0.6, scale: 1 }}
             transition={{ duration: 1.5, delay: 0.2, ease: "easeOut" }}
-            className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#B0E0E6] rounded-full blur-[140px] pointer-events-none z-0"
+            className="absolute bottom-[-10%] right-[-10%] w-125 h-125 bg-[#B0E0E6] rounded-full blur-[140px] pointer-events-none z-0"
           />
           
 
@@ -124,7 +124,7 @@ export default function LandingPage() {
                 initial={{ y: 30, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.1 }}
-                className="text-4xl sm:text-5xl lg:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-br from-pink-600 via-rose-500 to-rose-400 tracking-tight mb-6 leading-[1.1] pb-2 font-display"
+                className="text-4xl sm:text-5xl lg:text-6xl font-black text-transparent bg-clip-text bg-linear-to-br from-pink-600 via-rose-500 to-rose-400 tracking-tight mb-6 leading-[1.1] pb-2 font-display"
                 style={{ textShadow: '0 0 80px rgba(236, 72, 153, 0.3)' }}
               >
                 Create Magic<br />
@@ -149,7 +149,7 @@ export default function LandingPage() {
               >
                 <Link 
                   to={user ? (user.role === 'admin' ? '/admin' : '/dashboard') : '/signup'} 
-                  className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-pink-500 to-rose-400 text-white font-black rounded-full shadow-xl shadow-pink-200/50 hover:shadow-2xl hover:shadow-pink-300/60 transition transform hover:-translate-y-1 text-lg flex items-center justify-center gap-2 font-display"
+                  className="w-full sm:w-auto px-8 py-4 bg-linear-to-r from-pink-500 to-rose-400 text-white font-black rounded-full shadow-xl shadow-pink-200/50 hover:shadow-2xl hover:shadow-pink-300/60 transition transform hover:-translate-y-1 text-lg flex items-center justify-center gap-2 font-display"
                 >
                   {user ? 'Go to Dashboard' : 'Start Creating Free'} <ChevronRight className="w-5 h-5" />
                 </Link>
@@ -166,7 +166,7 @@ export default function LandingPage() {
               <div className="absolute inset-0 bg-gradient-to-tr from-pink-200 to-rose-100 rounded-[3rem] blur-3xl opacity-50 transform -rotate-6"></div>
               <div className="relative bg-white p-8 rounded-[3rem] shadow-2xl border border-pink-100 transform rotate-2 hover:rotate-0 transition-transform duration-500">
                  <div className="bg-pink-50 rounded-3xl p-6 h-[400px] flex items-center justify-center relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-50">
+                    <div className="absolute inset-0">
                        <BubuDuduParty />
                     </div>
                     {/* Decorative UI overlays */}
@@ -226,17 +226,17 @@ export default function LandingPage() {
                    >
                       {/* Card background with hover effect */}
                       <div className="absolute inset-0 bg-white rounded-3xl shadow-lg group-hover:shadow-2xl transition-shadow duration-300"></div>
-                      <div className={`absolute inset-0 bg-gradient-to-br ${s.gradient} rounded-3xl opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
+                      <div className={`absolute inset-0 bg-linear-to-br ${s.gradient} rounded-3xl opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
                       
                       {/* Card content */}
                       <div className="relative p-8 flex flex-col items-center">
                          {/* Step number badge */}
-                         <div className="absolute -top-4 -right-4 w-12 h-12 bg-gradient-to-br from-pink-400 to-rose-500 rounded-2xl flex items-center justify-center shadow-lg transform rotate-12 group-hover:rotate-0 transition-transform duration-300">
+                         <div className="absolute -top-4 -right-4 w-12 h-12 bg-linear-to-br from-pink-400 to-rose-500 rounded-2xl flex items-center justify-center shadow-lg transform rotate-12 group-hover:rotate-0 transition-transform duration-300">
                             <span className="text-white font-black text-lg">{s.step}</span>
                          </div>
                          
                          {/* Icon */}
-                         <div className={`w-20 h-20 bg-gradient-to-br ${s.gradient} rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-pink-300/50 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300`}>
+                         <div className={`w-20 h-20 bg-linear-to-br ${s.gradient} rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-pink-300/50 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300`}>
                             {s.icon}
                          </div>
                          
@@ -248,7 +248,7 @@ export default function LandingPage() {
                          
                          {/* Connector line for desktop */}
                          {i < 2 && (
-                           <div className="hidden md:block absolute top-12 -right-8 lg:-right-12 w-16 lg:w-24 h-0.5 bg-gradient-to-r from-pink-300 to-transparent"></div>
+                           <div className="hidden md:block absolute top-12 -right-8 lg:-right-12 w-16 lg:w-24 h-0.5 bg-linear-to-r from-pink-300 to-transparent"></div>
                          )}
                       </div>
                    </motion.div>
@@ -277,10 +277,10 @@ export default function LandingPage() {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                {[
-                 { name: "Love & Romance", component: <BubuDuduLove />, gradient: "from-rose-100 to-pink-100", hoverGradient: "from-rose-200 to-pink-200" },
-                 { name: "Valentine's Special", component: <BubuDuduValentine />, gradient: "from-red-100 to-rose-100", hoverGradient: "from-red-200 to-rose-200" },
-                 { name: "Sleepy Bears", component: <BubuDuduSleepy />, gradient: "from-indigo-100 to-blue-100", hoverGradient: "from-indigo-200 to-blue-200" },
-                 { name: "Birthday Party", component: <BubuDuduParty />, gradient: "from-amber-100 to-yellow-100", hoverGradient: "from-amber-200 to-yellow-200" },
+                 { name: "Love & Romance", id: "love", component: <BubuDuduLove />, gradient: "from-rose-100 to-pink-100", hoverGradient: "from-rose-200 to-pink-200" },
+                 { name: "Valentine's Special", id: "valentine", component: <BubuDuduValentine />, gradient: "from-red-100 to-rose-100", hoverGradient: "from-red-200 to-rose-200" },
+                 { name: "Sleepy Bears", id: "sleepy", component: <BubuDuduSleepy />, gradient: "from-indigo-100 to-blue-100", hoverGradient: "from-indigo-200 to-blue-200" },
+                 { name: "Birthday Party", id: "party", component: <BubuDuduParty />, gradient: "from-amber-100 to-yellow-100", hoverGradient: "from-amber-200 to-yellow-200" },
                ].map((th, i) => (
                  <motion.div 
                    key={i}
@@ -288,17 +288,19 @@ export default function LandingPage() {
                    whileInView={{ opacity: 1, scale: 1 }}
                    viewport={{ once: true }}
                    transition={{ duration: 0.5, delay: i * 0.1 }}
-                   className="group relative"
+                   className="group relative h-full"
                  >
-                    <div className={`absolute inset-0 bg-gradient-to-br ${th.gradient} rounded-3xl transform group-hover:scale-105 transition-transform duration-300`}></div>
-                    <div className={`absolute inset-0 bg-gradient-to-br ${th.hoverGradient} rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
-                    
-                    <div className="relative bg-white/60 backdrop-blur-sm rounded-3xl p-6 border-2 border-white shadow-lg group-hover:shadow-2xl transition-all duration-300 flex flex-col items-center text-center">
-                       <div className="w-44 h-44 mb-4 transform group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300">
-                          {th.component}
-                       </div>
-                       <h4 className="font-black text-gray-900 text-lg group-hover:text-pink-600 transition-colors font-display">{th.name}</h4>
-                    </div>
+                   <Link to={user ? (user.role === 'admin' ? '/admin' : `/dashboard?create=true&theme=${th.id}`) : '/signup'} className="block h-full cursor-pointer">
+                     <div className={`absolute inset-0 bg-linear-to-br ${th.gradient} rounded-3xl transform group-hover:scale-105 transition-transform duration-300`}></div>
+                     <div className={`absolute inset-0 bg-linear-to-br ${th.hoverGradient} rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+                     
+                     <div className="relative h-full bg-white/60 backdrop-blur-sm rounded-3xl p-6 border-2 border-white shadow-lg group-hover:shadow-2xl transition-all duration-300 flex flex-col items-center text-center">
+                        <div className="w-44 h-44 mb-4 transform group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300">
+                           {th.component}
+                        </div>
+                        <h4 className="font-black text-gray-900 text-lg group-hover:text-pink-600 transition-colors font-display">{th.name}</h4>
+                     </div>
+                   </Link>
                  </motion.div>
                ))}
             </div>
@@ -311,7 +313,7 @@ export default function LandingPage() {
               transition={{ duration: 0.6, delay: 0.4 }}
             >
                <Link 
-                 to={user ? (user.role === 'admin' ? '/admin' : '/dashboard') : '/signup'} 
+                 to={user ? (user.role === 'admin' ? '/admin' : '/dashboard?create=true') : '/signup'} 
                  className="inline-flex items-center gap-2 px-8 py-4 bg-white text-pink-600 border-2 border-pink-300 font-black rounded-full shadow-lg hover:shadow-xl hover:bg-pink-50 hover:scale-105 transition-all duration-300"
                >
                   {user ? 'Explore All Themes' : 'Sign Up to Explore Themes'} 
@@ -324,7 +326,7 @@ export default function LandingPage() {
         {/* Features Section */}
         <section className="w-full py-24 bg-white relative z-10 overflow-hidden">
           {/* Animated background gradients */}
-          <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-pink-200/30 to-rose-200/30 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute top-20 right-10 w-96 h-96 bg-linear-to-br from-pink-200/30 to-rose-200/30 rounded-full blur-3xl animate-pulse"></div>
           <div className="absolute bottom-20 left-10 w-80 h-80 bg-gradient-to-tr from-purple-200/30 to-pink-200/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
           
           <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
@@ -357,12 +359,12 @@ export default function LandingPage() {
                   className="group relative"
                 >
                   {/* Card glow effect on hover */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${ft.gradient} rounded-3xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300`}></div>
+                  <div className={`absolute inset-0 bg-linear-to-br ${ft.gradient} rounded-3xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300`}></div>
                   
                   {/* Card */}
-                  <div className="relative bg-gradient-to-br from-gray-50 to-white rounded-3xl p-8 border-2 border-gray-100 group-hover:border-pink-200 hover:shadow-2xl hover:shadow-pink-100/50 transition-all duration-300 h-full">
+                  <div className="relative bg-linear-to-br from-gray-50 to-white rounded-3xl p-8 border-2 border-gray-100 group-hover:border-pink-200 hover:shadow-2xl hover:shadow-pink-100/50 transition-all duration-300 h-full">
                     {/* Icon */}
-                    <div className={`w-16 h-16 bg-gradient-to-br ${ft.gradient} rounded-2xl flex items-center justify-center mb-6 shadow-lg transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300`}>
+                    <div className={`w-16 h-16 bg-linear-to-br ${ft.gradient} rounded-2xl flex items-center justify-center mb-6 shadow-lg transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300`}>
                       {ft.icon}
                     </div>
                     
@@ -382,10 +384,10 @@ export default function LandingPage() {
         </section>
 
         {/* Testimonials */}
-        <section className="w-full py-24 bg-gradient-to-br from-pink-500 via-rose-500 to-pink-600 text-white relative overflow-hidden">
+        <section className="w-full py-24 bg-linear-to-br from-pink-500 via-rose-500 to-pink-600 text-white relative overflow-hidden">
            {/* Decorative elements */}
            <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2 animate-pulse"></div>
-           <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-rose-600/20 rounded-full blur-3xl -translate-x-1/2 translate-y-1/2 animate-pulse" style={{ animationDelay: '1.5s' }}></div>
+           <div className="absolute bottom-0 left-0 w-125 h-125 bg-rose-600/20 rounded-full blur-3xl -translate-x-1/2 translate-y-1/2 animate-pulse" style={{ animationDelay: '1.5s' }}></div>
            <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-yellow-300/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
            
            <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
@@ -447,7 +449,7 @@ export default function LandingPage() {
         </section>
 
         {/* CTA Section */}
-        <section className="w-full py-32 bg-gradient-to-br from-pink-50 via-white to-rose-50 text-center px-4 relative overflow-hidden">
+        <section className="w-full py-32 bg-linear-to-br from-pink-50 via-white to-rose-50 text-center px-4 relative overflow-hidden">
            {/* Animated background elements */}
            <div className="absolute top-0 left-1/4 w-96 h-96 bg-pink-300/20 rounded-full blur-3xl animate-pulse"></div>
            <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-rose-300/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1.5s' }}></div>
@@ -472,7 +474,7 @@ export default function LandingPage() {
               >
                 <Link 
                   to={user ? (user.role === 'admin' ? '/admin' : '/dashboard') : '/signup'} 
-                  className="inline-flex items-center gap-3 px-10 py-5 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 text-white font-black rounded-full shadow-2xl shadow-pink-300/50 hover:shadow-3xl hover:shadow-pink-400/60 transition-all duration-300 text-lg font-display group"
+                  className="inline-flex items-center gap-3 px-10 py-5 bg-linear-to-r from-pink-500 via-rose-500 to-pink-600 text-white font-black rounded-full shadow-2xl shadow-pink-300/50 hover:shadow-3xl hover:shadow-pink-400/60 transition-all duration-300 text-lg font-display group"
                 >
                   {user ? 'Go to Dashboard' : 'Create Your First Card Now'}
                   <ChevronRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />

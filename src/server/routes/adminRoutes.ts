@@ -3,6 +3,8 @@ import { db } from "../../db/index";
 import { users, cards, reviews } from "../../db/schema";
 import { eq, desc } from "drizzle-orm";
 import { authenticate, checkAdmin } from "../middleware/auth";
+import { validateUUID } from "../middleware/sanitization";
+import { logger } from "../lib/logger";
 
 export const adminRouter = express.Router();
 
@@ -85,6 +87,12 @@ adminRouter.get("/wishes", async (req: any, res) => {
 
 adminRouter.delete("/users/:id", async (req: any, res) => {
   try {
+    if (!validateUUID(req.params.id)) {
+      return res.status(400).json({ error: "Invalid user ID format" });
+    }
+    if (req.params.id === req.user?.id) {
+      return res.status(400).json({ error: "Cannot delete your own admin account" });
+    }
     await db.delete(users).where(eq(users.id, req.params.id));
     res.json({ success: true });
   } catch (e) { console.error(e); res.status(500).json({ error: "Server DB error" }); }
@@ -92,6 +100,12 @@ adminRouter.delete("/users/:id", async (req: any, res) => {
 
 adminRouter.post("/users/:id/toggle-suspend", async (req: any, res) => {
   try {
+    if (!validateUUID(req.params.id)) {
+      return res.status(400).json({ error: "Invalid user ID format" });
+    }
+    if (req.params.id === req.user?.id) {
+      return res.status(400).json({ error: "Cannot suspend your own admin account" });
+    }
     const userRecords = await db.select().from(users).where(eq(users.id, req.params.id)).limit(1);
     if (userRecords.length === 0) return res.status(404).json({ error: "User not found" });
     
@@ -104,7 +118,7 @@ adminRouter.post("/users/:id/toggle-suspend", async (req: any, res) => {
 
 adminRouter.get("/reviews", async (req: any, res) => {
   try {
-    console.log('[Admin Reviews] Fetching all reviews...');
+    logger.debug('[Admin Reviews] Fetching all reviews...');
     const allReviews = await db
       .select({
         id: reviews.id,
@@ -120,7 +134,7 @@ adminRouter.get("/reviews", async (req: any, res) => {
       .leftJoin(users, eq(reviews.userId, users.id))
       .orderBy(desc(reviews.createdAt));
     
-    console.log(`[Admin Reviews] Found ${allReviews.length} reviews`);
+    logger.debug(`[Admin Reviews] Found ${allReviews.length} reviews`);
     res.json(allReviews);
   } catch (e) {
     console.error('[Admin Reviews] Error:', e);
@@ -130,6 +144,9 @@ adminRouter.get("/reviews", async (req: any, res) => {
 
 adminRouter.post("/reviews/:id/toggle-featured", async (req: any, res) => {
   try {
+    if (!validateUUID(req.params.id)) {
+      return res.status(400).json({ error: "Invalid review ID format" });
+    }
     const reviewRecords = await db.select().from(reviews).where(eq(reviews.id, req.params.id)).limit(1);
     if (reviewRecords.length === 0) return res.status(404).json({ error: "Review not found" });
     
@@ -142,6 +159,9 @@ adminRouter.post("/reviews/:id/toggle-featured", async (req: any, res) => {
 
 adminRouter.delete("/reviews/:id", async (req: any, res) => {
   try {
+    if (!validateUUID(req.params.id)) {
+      return res.status(400).json({ error: "Invalid review ID format" });
+    }
     await db.delete(reviews).where(eq(reviews.id, req.params.id));
     res.json({ success: true });
   } catch (e) { console.error(e); res.status(500).json({ error: "Server DB error" }); }

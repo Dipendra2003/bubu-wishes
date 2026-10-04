@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { logger } from "../lib/logger";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -536,16 +537,47 @@ export const getBirthdayWishEmailHtml = (
 };
 
 export const sendEmail = async (to: string, subject: string, html: string) => {
+  // 1. Resend API via HTTPS (Port 443) - Bypasses Render/Cloud SMTP port blocks completely!
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: process.env.FROM_EMAIL || "BubuWish <onboarding@resend.dev>",
+          to: [to],
+          subject,
+          html,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Resend API error (${response.status}): ${errText}`);
+      }
+      logger.info(`✅ Email sent via Resend API to ${to}: ${subject}`);
+      return;
+    } catch (err) {
+      console.error(`❌ Failed to send email via Resend API:`, err);
+      throw err;
+    }
+  }
+
+  // 2. Nodemailer SMTP (Port 587/465) - Works locally, Vercel, Railway, or Render with unblocked SMTP
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.log(`[SMTP Not Configured] Skipped sending email to ${to}: ${subject}`);
-    console.log(`Email Body Preview: ${html.substring(0, 200)}...`);
+    logger.warn(`[Email Not Configured] Neither RESEND_API_KEY nor SMTP credentials configured. Skipped sending to ${to}: ${subject}`);
+    logger.debug(`Email Body Preview: ${html.substring(0, 200)}...`);
     return;
   }
+
   await transporter.sendMail({
     from: `"${process.env.FROM_NAME || 'BubuWish Magic Cards'}" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
     to,
     subject,
     html,
   });
-  console.log(`✅ Email sent to ${to}: ${subject}`);
+  logger.info(`✅ Email sent via SMTP to ${to}: ${subject}`);
 };

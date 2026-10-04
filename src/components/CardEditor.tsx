@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import ReactPlayer from 'react-player';
+import { YouTubeEmbed } from './YouTubeEmbed';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CardData, ThemeType, MusicType, PhotoType, FloatingEffectType } from '../types';
 import { ThemeColors } from './ThemeGraphics';
-import { cn, encodeCardData } from '../lib/utils';
-import { Heart, PartyPopper, Moon, Music, Wand2, Copy, Check, Puzzle, Palette, Image as ImageIcon, Clock, Mic, Square, Gift, Sparkles, Save, FolderOpen } from 'lucide-react';
+import { cn, encodeCardData, getYouTubeVideoId } from '../lib/utils';
+import { Heart, PartyPopper, Moon, Music, Wand2, Copy, Check, Puzzle, Palette, Image as ImageIcon, Clock, Mic, Square, Gift, Sparkles, Save, FolderOpen, Play, Pause, Volume2, Video, Link2, X } from 'lucide-react';
+import { playTune, stopTune } from '../lib/audio';
 import { motion } from 'motion/react';
 import { useToast } from './ui/ToastProvider';
 import { useAuth } from '../App';
@@ -14,23 +17,27 @@ interface CardEditorProps {
   initialData: CardData;
   onPreview: (data: CardData) => void;
   onSaveOnly?: () => void; // Optional callback when "Save Only" is clicked
+  cardId?: string | null;
+  onCardSaved?: (id: string) => void;
 }
 
-export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorProps) {
+export function CardEditor({ initialData, onPreview, onSaveOnly, cardId, onCardSaved }: CardEditorProps) {
   const { token } = useAuth();
   const location = useLocation();
   const AUTOSAVE_KEY = 'magic_card_draft';
   const [data, setData] = useState<CardData>(() => {
-    try {
-      const saved = localStorage.getItem(AUTOSAVE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Basic check to see if it's a valid object
-        if (parsed && typeof parsed === 'object') {
-          return { enablePuzzles: true, puzzleLanguage: 'english', surprisePhoto: 'none', ...initialData, ...parsed };
+    // Only attempt to restore draft from localStorage when CREATING a new card (no cardId)
+    if (!cardId) {
+      try {
+        const saved = localStorage.getItem(AUTOSAVE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && typeof parsed === 'object') {
+            return { enablePuzzles: true, puzzleLanguage: 'english', surprisePhoto: 'none', ...initialData, ...parsed };
+          }
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
+    }
     return { enablePuzzles: true, puzzleLanguage: 'english', surprisePhoto: 'none', ...initialData };
   });
 
@@ -39,9 +46,51 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
   const [isRecording, setIsRecording] = useState(false);
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [mediaLibraryType, setMediaLibraryType] = useState<'all' | 'image' | 'audio' | 'video'>('all');
+  const [activeCardId, setActiveCardId] = useState<string | null>(cardId || null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isPlayingTestMusic, setIsPlayingTestMusic] = useState(false);
   const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
   const audioChunksRef = React.useRef<BlobPart[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (cardId) {
+      setActiveCardId(cardId);
+      setData({ enablePuzzles: true, puzzleLanguage: 'english', surprisePhoto: 'none', ...initialData });
+    }
+  }, [cardId, initialData]);
+
+  useEffect(() => {
+    return () => {
+      stopTune();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isPlayingTestMusic) {
+      stopTune();
+      setIsPlayingTestMusic(false);
+    }
+  }, [data.music, data.customMusicUrl]);
+
+  const toggleTestMusic = () => {
+    if (isPlayingTestMusic) {
+      stopTune();
+      setIsPlayingTestMusic(false);
+    } else {
+      if (data.music === 'none') return;
+      if (data.music === 'custom') {
+        if (!data.customMusicUrl) {
+          toast('Please paste a YouTube or audio link first', 'info');
+          return;
+        }
+        setIsPlayingTestMusic(true);
+      } else {
+        playTune(data.music);
+        setIsPlayingTestMusic(true);
+      }
+    }
+  };
 
   // Handle selected media from Media Library page
   useEffect(() => {
@@ -56,6 +105,9 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
         } else if (media.mediaType === 'audio') {
           setData({ ...data, recordedAudio: media.mediaUrl });
           toast('Voice note added from library! 🎤', 'success');
+        } else if (media.mediaType === 'video') {
+          setData(prev => ({ ...prev, customVideoUrl: media.mediaUrl }));
+          toast('Video added from library! 🎬', 'success');
         }
         sessionStorage.removeItem('selectedMedia');
       } catch (e) {
@@ -78,8 +130,7 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
       setData({ ...data, recordedAudio: media.mediaUrl });
       toast('Voice note added from library! 🎤', 'success');
     } else if (media.mediaType === 'video') {
-      const currentUrls = data.customPhotoUrls || (data.customPhotoUrl ? [data.customPhotoUrl] : []);
-      setData({ ...data, customPhotoUrls: [...currentUrls, media.mediaUrl], surprisePhoto: 'custom' });
+      setData(prev => ({ ...prev, customVideoUrl: media.mediaUrl }));
       toast('Video added from library! 🎬', 'success');
     }
   };
@@ -202,11 +253,13 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
   };
 
   React.useEffect(() => {
+    // Only autosave drafts for new cards. Do NOT overwrite draft when editing existing DB cards!
+    if (activeCardId || cardId) return;
     const timer = setTimeout(() => {
       localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
     }, 1000);
     return () => clearTimeout(timer);
-  }, [data]);
+  }, [data, activeCardId, cardId]);
 
   const handleGenerateAI = async () => {
     if (!data.to) {
@@ -243,44 +296,14 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
   const shareUrl = `${window.location.origin}/card?c=${encodeCardData(data)}`;
 
   const handleCopy = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
     try {
       let urlToCopy = shareUrl;
-      const needsBackend = true; // Always save cards to DB now!
+      const currentId = activeCardId || cardId;
       
-      // If there's a custom music or photo URL, we MUST save it to backend
-      if (needsBackend) {
-        let updatedData = { ...data };
-        if (data.music === 'custom' && data.customMusicUrl) {
-           let modifiedUrl = data.customMusicUrl;
-           if (modifiedUrl.includes('drive.google.com/file/d/')) {
-              const match = modifiedUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-              if (match && match[1]) {
-                 modifiedUrl = `https://drive.google.com/uc?export=download&id=${match[1]}`;
-              }
-           } else if (modifiedUrl.includes('dropbox.com/') && !modifiedUrl.includes('raw=1')) {
-              modifiedUrl = modifiedUrl.replace('?dl=0', '?raw=1').replace('?dl=1', '?raw=1');
-              if (!modifiedUrl.includes('?')) modifiedUrl += '?raw=1';
-           }
-           updatedData.customMusicUrl = modifiedUrl;
-        }
-
-        const res = await fetchWithCsrf('/api/cards', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify(updatedData),
-        });
-        if (res.ok) {
-          const result = await res.json();
-          urlToCopy = `${window.location.origin}/card?id=${result.id}`;
-        } else {
-          toast('Failed to generate sharing link due to server error.', 'error');
-          return;
-        }
-      } else if (data.music === 'custom' && data.customMusicUrl) {
-         // Formatting common links like google drive
+      let updatedData = { ...data };
+      if (data.music === 'custom' && data.customMusicUrl) {
          let modifiedUrl = data.customMusicUrl;
          if (modifiedUrl.includes('drive.google.com/file/d/')) {
             const match = modifiedUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
@@ -291,9 +314,41 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
             modifiedUrl = modifiedUrl.replace('?dl=0', '?raw=1').replace('?dl=1', '?raw=1');
             if (!modifiedUrl.includes('?')) modifiedUrl += '?raw=1';
          }
-         
-         const updatedData = { ...data, customMusicUrl: modifiedUrl };
-         urlToCopy = `${window.location.origin}/card?c=${encodeCardData(updatedData)}`;
+         updatedData.customMusicUrl = modifiedUrl;
+      }
+
+      if (currentId) {
+        // Update existing card to avoid duplicate creation
+        await fetchWithCsrf(`/api/wishes/${currentId}`, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify(updatedData),
+        });
+        urlToCopy = `${window.location.origin}/card?id=${currentId}`;
+      } else {
+        // Create new card record once
+        const res = await fetchWithCsrf('/api/cards', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify(updatedData),
+        });
+        if (res.ok) {
+          const result = await res.json();
+          if (result.id) {
+            setActiveCardId(result.id);
+            if (onCardSaved) onCardSaved(result.id);
+            urlToCopy = `${window.location.origin}/card?id=${result.id}`;
+          }
+        } else {
+          toast('Failed to generate sharing link due to server error.', 'error');
+          return;
+        }
       }
 
       await navigator.clipboard.writeText(urlToCopy);
@@ -303,6 +358,8 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
     } catch (err) {
       console.error('Failed to copy', err);
       toast('Failed to copy link', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -327,7 +384,7 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
     { id: 'cake', label: 'Bubu & Dudu Cake' },
     { id: 'hug', label: 'Warm Hug' },
     { id: 'stargazing', label: 'Stargazing' },
-    { id: 'custom', label: 'Upload Photos' },
+    { id: 'custom', label: 'Upload Photos 📸' },
     { id: 'none', label: 'No Photo' },
   ];
 
@@ -341,11 +398,11 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
   ];
 
   const colorOptions = [
-    { id: 'bg-gradient-to-br from-amber-100 to-yellow-200', label: 'Sunshine' },
-    { id: 'bg-gradient-to-br from-rose-100 to-pink-200', label: 'Sweet Pink' },
-    { id: 'bg-gradient-to-br from-indigo-100 to-blue-200', label: 'Dreamy Blue' },
-    { id: 'bg-gradient-to-br from-purple-200 to-fuchsia-200', label: 'Magic Purple' },
-    { id: 'bg-gradient-to-br from-emerald-100 to-teal-200', label: 'Minty Fresh' },
+    { id: 'bg-linear-to-br from-amber-100 to-yellow-200', label: 'Sunshine' },
+    { id: 'bg-linear-to-br from-rose-100 to-pink-200', label: 'Sweet Pink' },
+    { id: 'bg-linear-to-br from-indigo-100 to-blue-200', label: 'Dreamy Blue' },
+    { id: 'bg-linear-to-br from-purple-200 to-fuchsia-200', label: 'Magic Purple' },
+    { id: 'bg-linear-to-br from-emerald-100 to-teal-200', label: 'Minty Fresh' },
   ];
 
   return (
@@ -357,7 +414,7 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
       >
         <div className="relative mb-3 sm:mb-6 flex flex-col items-center">
           <div className="w-full flex justify-end mb-1 sm:mb-2">
-            {localStorage.getItem(AUTOSAVE_KEY) && (
+            {!activeCardId && !cardId && localStorage.getItem(AUTOSAVE_KEY) && (
               <button
                 onClick={() => {
                   if (confirm("Are you sure you want to discard your draft?")) {
@@ -373,14 +430,16 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
               </button>
             )}
           </div>
-          <h2 className="text-center text-xl sm:text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-blue-500 tracking-tight">
-            Create a Bubu & Dudu Card
+          <h2 className="text-center text-xl sm:text-3xl font-extrabold bg-clip-text text-transparent bg-linear-to-r from-pink-500 to-blue-500 tracking-tight">
+            {activeCardId || cardId ? 'Edit Bubu & Dudu Card' : 'Create a Bubu & Dudu Card'}
           </h2>
           <div className="flex gap-2 items-center mt-1 sm:mt-2 flex-wrap justify-center">
             <p className="text-center text-[11px] sm:text-sm font-semibold text-gray-500">
-              Customize your 3D greeting card and share it.
+              {activeCardId || cardId ? 'Update your card details, music, and surprise elements.' : 'Customize your 3D greeting card and share it.'}
             </p>
-            <span className="text-[8px] sm:text-[10px] bg-green-100 text-green-600 px-1.5 py-0.5 rounded font-bold uppercase tracking-widest hidden lg:inline-block">Auto-saving</span>
+            {!activeCardId && !cardId && (
+              <span className="text-[8px] sm:text-[10px] bg-green-100 text-green-600 px-1.5 py-0.5 rounded font-bold uppercase tracking-widest hidden lg:inline-block">Auto-saving</span>
+            )}
           </div>
         </div>
 
@@ -489,7 +548,7 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
             </div>
             {data.recordedAudio && !isRecording && (
               <div className="mt-2 text-center">
-                 <audio controls src={data.recordedAudio} className="h-6 sm:h-8 w-full max-w-full sm:max-w-[200px] mx-auto" />
+                 <audio controls src={data.recordedAudio} className="h-6 sm:h-8 w-full max-w-full sm:max-w-50 mx-auto" />
               </div>
             )}
           </div>
@@ -574,30 +633,111 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
                  </button>
                ))}
              </div>
-             {data.music === 'custom' && (
-               <div className="mt-3 p-3 sm:p-4 bg-white/40 border border-white/60 rounded-xl sm:rounded-2xl animate-in fade-in slide-in-from-top-2 space-y-3 sm:space-y-4">
-                 <div>
-                   <label className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Paste a YouTube or Audio Link</label>
-                   <input
-                     type="text"
-                     value={data.customMusicUrl || ''}
-                     onChange={e => {
-                       let val = e.target.value;
-                       if (val.includes('drive.google.com/file/d/')) {
-                         const match = val.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                         if (match && match[1]) {
-                           val = `https://drive.google.com/uc?export=download&id=${match[1]}`;
-                         }
-                       } else if (val.includes('dropbox.com/') && !val.includes('raw=1')) {
-                         val = val.replace('?dl=0', '?raw=1').replace('?dl=1', '?raw=1');
-                         if (!val.includes('?')) val += '?raw=1';
-                       }
-                       setData({ ...data, customMusicUrl: val });
-                     }}
-                     className="block w-full bg-white/60 border border-white/80 rounded-lg sm:rounded-xl shadow-sm focus:ring-2 focus:ring-pink-300 p-2 sm:p-3 text-xs sm:text-sm text-gray-700 outline-none backdrop-blur-sm transition-all"
-                     placeholder="https://youtu.be/... or https://example.com/song.mp3"
-                   />
-                 </div>
+              {/* Music Test / Preview Control for Presets */}
+              {data.music !== 'none' && data.music !== 'custom' && (
+                <div className="flex items-center justify-between mt-2.5 pt-2 px-1 border-t border-pink-100/60">
+                  <button
+                    type="button"
+                    onClick={toggleTestMusic}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer",
+                      isPlayingTestMusic
+                        ? "bg-rose-500 text-white shadow-pink-200 animate-pulse"
+                        : "bg-pink-50 hover:bg-pink-100 text-pink-600 border border-pink-200"
+                    )}
+                  >
+                    {isPlayingTestMusic ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                    <span>{isPlayingTestMusic ? 'Stop Test' : 'Test Music'}</span>
+                  </button>
+                  <span className="text-[10px] text-gray-500 font-semibold flex items-center gap-1">
+                    <Volume2 className={cn("w-3.5 h-3.5", isPlayingTestMusic ? "text-pink-500 animate-bounce" : "text-gray-400")} />
+                    {isPlayingTestMusic ? 'Playing melody preview...' : 'Click to hear tune'}
+                  </span>
+                </div>
+              )}
+
+              {data.music === 'custom' && (
+                <div className="mt-3 p-3 sm:p-4 bg-white/40 border border-white/60 rounded-xl sm:rounded-2xl animate-in fade-in slide-in-from-top-2 space-y-3 sm:space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[9px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest block">Paste a YouTube or Audio Link</label>
+                      {data.customMusicUrl && (
+                        <button
+                          type="button"
+                          onClick={toggleTestMusic}
+                          className={cn(
+                            "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer shadow-xs",
+                            isPlayingTestMusic
+                              ? "bg-rose-500 text-white animate-pulse"
+                              : "bg-pink-100 text-pink-700 hover:bg-pink-200"
+                          )}
+                        >
+                          {isPlayingTestMusic ? <Pause className="w-3 h-3 fill-current" /> : <Play className="w-3 h-3 fill-current" />}
+                          <span>{isPlayingTestMusic ? 'Stop Preview' : 'Play Preview'}</span>
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={data.customMusicUrl || ''}
+                      onChange={e => {
+                        let val = e.target.value;
+                        if (val.includes('drive.google.com/file/d/')) {
+                          const match = val.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                          if (match && match[1]) {
+                            val = `https://drive.google.com/uc?export=download&id=${match[1]}`;
+                          }
+                        } else if (val.includes('dropbox.com/') && !val.includes('raw=1')) {
+                          val = val.replace('?dl=0', '?raw=1').replace('?dl=1', '?raw=1');
+                          if (!val.includes('?')) val += '?raw=1';
+                        }
+                        setData({ ...data, customMusicUrl: val });
+                      }}
+                      className="block w-full bg-white/60 border border-white/80 rounded-lg sm:rounded-xl shadow-sm focus:ring-2 focus:ring-pink-300 p-2 sm:p-3 text-xs sm:text-sm text-gray-700 outline-none backdrop-blur-sm transition-all"
+                      placeholder="https://youtu.be/... or https://example.com/song.mp3"
+                    />
+
+                    {/* YouTube Video Recognition & Visual Preview Player */}
+                    {data.customMusicUrl && (() => {
+                      const ytId = getYouTubeVideoId(data.customMusicUrl);
+                      if (ytId) {
+                        return (
+                          <div className="mt-2.5 space-y-2">
+                            <div className="flex items-center justify-between text-[11px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-lg">
+                              <span className="flex items-center gap-1.5">
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Valid YouTube video recognized! Ready to play on card unwrap.</span>
+                              </span>
+                              <span className="text-[10px] text-emerald-600 font-semibold uppercase">Interactive Preview</span>
+                            </div>
+                            <div className="rounded-xl overflow-hidden border border-pink-200 shadow-md bg-black relative max-w-sm mx-auto aspect-video">
+                              <YouTubeEmbed
+                                videoId={ytId}
+                                playing={isPlayingTestMusic}
+                                autoPlay={isPlayingTestMusic}
+                                onStateChange={(playing) => setIsPlayingTestMusic(playing)}
+                                className="w-full h-full border-0"
+                              />
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {/* Non-YouTube Audio Preview */}
+                    {isPlayingTestMusic && data.customMusicUrl && !getYouTubeVideoId(data.customMusicUrl) && (
+                      <audio
+                        autoPlay
+                        loop
+                        src={data.customMusicUrl}
+                        onError={() => {
+                          toast('Failed to load audio file preview', 'error');
+                          setIsPlayingTestMusic(false);
+                        }}
+                      />
+                    )}
+                  </div>
                  <div className="flex items-center gap-3 sm:gap-4">
                    <div className="flex-1 h-px bg-gray-200"></div>
                    <span className="text-[10px] sm:text-xs text-gray-400 font-bold uppercase">OR</span>
@@ -634,7 +774,7 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
 
           <div>
              <label className="text-[10px] sm:text-xs font-bold text-gray-500 mb-2 sm:mb-3 uppercase tracking-widest flex items-center gap-1.5 sm:gap-2">
-               <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4" /> Surprise Photo Inside
+               <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4" /> Surprise Photo / Illustration Inside
              </label>
              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
                {photoOptions.map((opt) => (
@@ -677,49 +817,105 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
                      accept="image/*"
                      multiple
                      onChange={(e) => {
-                       const files = Array.from(e.target.files || []);
+                       const fileInput = e.target;
+                       const files = Array.from(fileInput.files || []);
                        if (files.length) {
                          const currentUrls = data.customPhotoUrls || (data.customPhotoUrl ? [data.customPhotoUrl] : []);
                          
                          const processFiles = async () => {
                            let urls = [...currentUrls];
+                           const cloudName = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME;
+                           const uploadPreset = (import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET;
+                           toast(files.length === 1 ? 'Uploading photo...' : `Uploading ${files.length} photos...`, 'info');
+
+                           let successCount = 0;
+                           let failCount = 0;
+
                            for (const file of files) {
                              if (file.size > 5000000) { // 5MB limit
-                               alert(`File ${file.name} is too large! Please use photos under 5MB.`);
+                               toast(`File "${file.name}" exceeds 5MB limit.`, 'error');
+                               failCount++;
                                continue;
                              }
-                             
-                             const formData = new FormData();
-                             formData.append('file', file);
-                             // If UPLOAD_PRESET or CLOUD_NAME is missing, fallback to data URL for dev preview
-                             const cloudName = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME;
-                             const uploadPreset = (import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET;
-                             
-                             if (!cloudName || !uploadPreset) {
-                               console.warn("Cloudinary not configured.");
-                               toast('Cloudinary configuration is missing', 'error');
-                             } else {
-                               formData.append('upload_preset', uploadPreset);
-                               toast('Uploading image...', 'info');
+
+                             let uploadedUrl = '';
+
+                             // 1. Try upload to user's media library via backend (Cloudinary + DB)
+                             if (token) {
                                try {
+                                 const formData = new FormData();
+                                 formData.append('file', file);
+                                 formData.append('type', 'image');
+
+                                 const res = await fetchWithCsrf('/api/media-library', {
+                                   method: 'POST',
+                                   headers: { Authorization: `Bearer ${token}` },
+                                   body: formData,
+                                 });
+
+                                 if (res.ok) {
+                                   const resJson = await res.json();
+                                   if (resJson.media?.mediaUrl) {
+                                     uploadedUrl = resJson.media.mediaUrl;
+                                   }
+                                 }
+                               } catch (err) {
+                                 console.warn("Backend media-library upload failed, falling back to direct upload:", err);
+                               }
+                             }
+
+                             // 2. Direct Cloudinary unsigned upload fallback
+                             if (!uploadedUrl && cloudName && uploadPreset) {
+                               try {
+                                 const formData = new FormData();
+                                 formData.append('file', file);
+                                 formData.append('upload_preset', uploadPreset);
+
                                  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
                                    method: 'POST',
                                    body: formData,
                                  });
-                                 const data = await res.json();
-                                 if (data.secure_url) {
-                                   urls.push(data.secure_url);
-                                 } else {
-                                   toast('Failed to upload image.', 'error');
+
+                                 if (res.ok) {
+                                   const resJson = await res.json();
+                                   if (resJson.secure_url) {
+                                     uploadedUrl = resJson.secure_url;
+                                   }
                                  }
                                } catch (err) {
-                                 console.error("Cloudinary upload error", err);
-                                 toast('Error uploading image.', 'error');
+                                 console.warn("Direct Cloudinary upload failed:", err);
                                }
                              }
+
+                             // 3. Fallback to local Data URL preview
+                             if (!uploadedUrl) {
+                               try {
+                                 uploadedUrl = await new Promise<string>((resolve) => {
+                                   const reader = new FileReader();
+                                   reader.onload = () => resolve((reader.result as string) || '');
+                                   reader.onerror = () => resolve('');
+                                   reader.readAsDataURL(file);
+                                 });
+                               } catch (e) {}
+                             }
+
+                             if (uploadedUrl) {
+                               urls.push(uploadedUrl);
+                               successCount++;
+                             } else {
+                               failCount++;
+                             }
                            }
-                           setData({ ...data, customPhotoUrls: urls });
-                           setCopied(false);
+
+                           if (successCount > 0) {
+                             setData(prev => ({ ...prev, customPhotoUrls: urls, surprisePhoto: 'custom' }));
+                             setCopied(false);
+                             toast(`Successfully uploaded ${successCount} photo${successCount > 1 ? 's' : ''}! 📸`, 'success');
+                           }
+                           if (failCount > 0 && successCount === 0) {
+                             toast(`Failed to upload ${failCount} photo${failCount > 1 ? 's' : ''}.`, 'error');
+                           }
+                           if (fileInput) fileInput.value = '';
                          };
                          processFiles();
                        }
@@ -734,7 +930,7 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
                        {(data.customPhotoUrls || (data.customPhotoUrl ? [data.customPhotoUrl] : [])).map((url, i) => (
                          <div key={i} className="relative w-24 h-24 shrink-0 rounded-lg bg-black/5 overflow-hidden flex items-center justify-center group">
                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                           <img src={url} alt={`Custom uploaded ${i + 1}`} className="w-full h-full object-cover" />
+                           <img src={url} alt={`Custom uploaded ${i + 1}`} className="w-full h-full object-contain p-1" />
                            <button
                              onClick={() => {
                                const arr = data.customPhotoUrls || (data.customPhotoUrl ? [data.customPhotoUrl] : []);
@@ -752,6 +948,196 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
                  )}
                </motion.div>
              )}
+
+              
+
+           {/* Dedicated Video Greeting Section - Can be used together with photos! */}
+           <div className="p-3.5 sm:p-5 rounded-2xl bg-white/40 border border-white/60 space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] sm:text-xs font-bold text-gray-600 uppercase tracking-widest flex items-center gap-1.5 sm:gap-2">
+                  <Video className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-600" />
+                  <span>Video Greeting Inside 🎬</span>
+                  {data.customVideoUrl ? (
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 animate-pulse">
+                      Active ✨
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-semibold text-gray-400">
+                      (Optional - Plays with Photos!)
+                    </span>
+                  )}
+                </label>
+                {token && (
+                  <button
+                    type="button"
+                    onClick={() => openMediaLibrary('video')}
+                    className="flex items-center gap-1 px-2.5 sm:px-3 py-1 bg-purple-500 hover:bg-purple-600 text-white rounded-full text-[10px] font-bold transition-colors shadow-sm"
+                  >
+                    <FolderOpen className="w-3 h-3" /> Video Library
+                  </button>
+                )}
+              </div>
+
+              {/* YouTube or Video URL Input */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-semibold text-gray-500">YouTube, Shorts, or Direct MP4 URL</label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                    <input
+                      type="url"
+                      placeholder="e.g. https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                      value={data.customVideoUrl || ''}
+                      onChange={(e) => {
+                        setData({ ...data, customVideoUrl: e.target.value });
+                        setCopied(false);
+                      }}
+                      className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-white/70 border border-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-300 text-gray-700"
+                    />
+                  </div>
+                  {data.customVideoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setData({ ...data, customVideoUrl: '' });
+                        setCopied(false);
+                      }}
+                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1"
+                    >
+                      <X className="w-3.5 h-3.5" /> Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* OR Divider */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px bg-gray-200" />
+                <span className="text-[10px] font-bold text-gray-400 uppercase">OR Upload File</span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+
+              {/* File Upload Input */}
+              <div>
+                <input 
+                  type="file" 
+                  accept="video/mp4,video/webm,video/ogg,video/quicktime"
+                  onChange={(e) => {
+                    const fileInput = e.target;
+                    const file = fileInput.files?.[0];
+                    if (file) {
+                      if (file.size > 30000000) {
+                        toast('Video exceeds 30MB limit.', 'error');
+                        return;
+                      }
+
+                      const processVideo = async () => {
+                        toast('Uploading video...', 'info');
+                        let uploadedUrl = '';
+                        const cloudName = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME;
+                        const uploadPreset = (import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+                        if (token) {
+                          try {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            formData.append('type', 'video');
+
+                            const res = await fetchWithCsrf('/api/media-library', {
+                              method: 'POST',
+                              headers: { Authorization: `Bearer ${token}` },
+                              body: formData,
+                            });
+
+                            if (res.ok) {
+                              const resJson = await res.json();
+                              if (resJson.media?.mediaUrl) {
+                                uploadedUrl = resJson.media.mediaUrl;
+                              }
+                            }
+                          } catch (err) {
+                            console.warn('Backend video upload failed:', err);
+                          }
+                        }
+
+                        if (!uploadedUrl && cloudName && uploadPreset) {
+                          try {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            formData.append('upload_preset', uploadPreset);
+
+                            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, {
+                              method: 'POST',
+                              body: formData,
+                            });
+
+                            if (res.ok) {
+                              const resJson = await res.json();
+                              if (resJson.secure_url) {
+                                uploadedUrl = resJson.secure_url;
+                              }
+                            }
+                          } catch (err) {
+                            console.warn('Direct Cloudinary video upload failed:', err);
+                          }
+                        }
+
+                        if (!uploadedUrl && file.size < 5000000) {
+                          try {
+                            uploadedUrl = await new Promise<string>((resolve) => {
+                              const reader = new FileReader();
+                              reader.onload = () => resolve((reader.result as string) || '');
+                              reader.onerror = () => resolve('');
+                              reader.readAsDataURL(file);
+                            });
+                          } catch (e) {}
+                        }
+
+                        if (uploadedUrl) {
+                          setData(prev => ({ ...prev, customVideoUrl: uploadedUrl }));
+                          setCopied(false);
+                          toast('Video uploaded successfully! 🎬', 'success');
+                        } else {
+                          toast('Failed to upload video to cloud. Try pasting a YouTube link instead!', 'error');
+                        }
+                        if (fileInput) fileInput.value = '';
+                      };
+                      processVideo();
+                    }
+                  }}
+                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 transition-all cursor-pointer"
+                />
+              </div>
+
+              {/* Video Preview */}
+              {data.customVideoUrl && (
+                <div className="mt-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Video Preview</label>
+                    <span className="text-[10px] text-purple-600 font-semibold">Plays in card Polaroid frame! 🎬</span>
+                  </div>
+                  <div className="relative w-full aspect-video max-h-56 bg-black rounded-xl overflow-hidden flex items-center justify-center border border-purple-200 shadow-sm">
+                    {getYouTubeVideoId(data.customVideoUrl) ? (
+                      <YouTubeEmbed videoId={getYouTubeVideoId(data.customVideoUrl)!} playing={false} className="w-full h-full border-0" />
+                    ) : (
+                      <video src={data.customVideoUrl} controls playsInline className="w-full h-full object-contain" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setData({ ...data, customVideoUrl: '' });
+                        setCopied(false);
+                      }}
+                      className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-1.5 rounded-full transition-colors z-20"
+                      title="Remove Video"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+           </div>
+
            </div>
 
           <div className="flex flex-col gap-2 mt-3 sm:mt-4 relative z-10">
@@ -779,7 +1165,7 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
              </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 bg-white/40 border border-white/60 rounded-xl sm:rounded-2xl transition-all hover:bg-white/60 gap-2 sm:gap-3">
               <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-400 to-blue-400 rounded-lg sm:rounded-xl flex items-center justify-center text-white shadow-sm shrink-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-linear-to-br from-indigo-400 to-blue-400 rounded-lg sm:rounded-xl flex items-center justify-center text-white shadow-sm shrink-0">
                   <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div>
@@ -795,7 +1181,7 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
                     setData({ ...data, unlockDate: e.target.value });
                     setCopied(false);
                   }}
-                  className="w-full sm:w-auto bg-white/70 border-2 border-white/80 focus:border-indigo-400 rounded-lg sm:rounded-xl px-2 sm:px-3 py-1 sm:py-1.5 outline-none transition-all text-[10px] sm:text-xs font-medium text-gray-700 min-w-0 sm:min-w-[180px]"
+                  className="w-full sm:w-auto bg-white/70 border-2 border-white/80 focus:border-indigo-400 rounded-lg sm:rounded-xl px-2 sm:px-3 py-1 sm:py-1.5 outline-none transition-all text-[10px] sm:text-xs font-medium text-gray-700 min-w-0 sm:min-w-45"
                 />
                 {data.unlockDate && (
                   <button
@@ -859,7 +1245,7 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
                  )}
                  <div className="flex items-center justify-between p-3 mt-2 bg-white/50 border border-white/50 rounded-xl transition-all hover:bg-white/70">
                    <div className="flex items-center gap-3">
-                     <div className="w-8 h-8 bg-gradient-to-br from-indigo-300 to-blue-300 rounded-lg flex items-center justify-center text-white shadow-sm">
+                     <div className="w-8 h-8 bg-linear-to-br from-indigo-300 to-blue-300 rounded-lg flex items-center justify-center text-white shadow-sm">
                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
                      </div>
                      <div>
@@ -877,7 +1263,7 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
                        }}
                        className="sr-only peer"
                      />
-                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
                    </label>
                  </div>
               </motion.div>
@@ -885,7 +1271,7 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
 
             <div className="flex items-center justify-between p-3 sm:p-4 bg-white/40 border border-white/60 rounded-xl sm:rounded-2xl transition-all">
               <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-400 to-purple-400 rounded-lg sm:rounded-xl flex items-center justify-center text-white shadow-sm">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-linear-to-br from-blue-400 to-purple-400 rounded-lg sm:rounded-xl flex items-center justify-center text-white shadow-sm">
                   <Puzzle className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div>
@@ -904,7 +1290,7 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 bg-white/40 border border-white/60 rounded-xl sm:rounded-2xl hover:bg-white/60 transition-all cursor-pointer gap-2 sm:gap-0" onClick={() => setData({ ...data, enableInteractiveUnwrap: !data.enableInteractiveUnwrap })}>
               <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-400 to-pink-400 rounded-lg sm:rounded-xl flex items-center justify-center text-white shadow-sm shrink-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-linear-to-br from-purple-400 to-pink-400 rounded-lg sm:rounded-xl flex items-center justify-center text-white shadow-sm shrink-0">
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 sm:w-5 sm:h-5"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></svg>
                 </div>
                 <div>
@@ -996,20 +1382,43 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
           <div className="pt-4 sm:pt-6 space-y-3 sm:space-y-4">
             {/* Primary Action - Save & Preview */}
             <button
-              onClick={() => onPreview(data)}
-              className="w-full flex justify-center items-center gap-2 py-3 sm:py-4 px-4 sm:px-6 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-xl sm:rounded-2xl text-sm sm:text-base font-bold shadow-lg shadow-pink-200/50 hover:shadow-xl hover:scale-[1.02] transition-all"
+              disabled={isSaving}
+              onClick={async () => {
+                if (isSaving) return;
+                setIsSaving(true);
+                try {
+                  stopTune();
+                  setIsPlayingTestMusic(false);
+                  await onPreview(data);
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+              className="w-full flex justify-center items-center gap-2 py-3 sm:py-4 px-4 sm:px-6 bg-linear-to-r from-pink-500 to-pink-600 text-white rounded-xl sm:rounded-2xl text-sm sm:text-base font-bold shadow-lg shadow-pink-200/50 hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <Wand2 className="w-4 h-4 sm:w-5 sm:h-5" />
-              Save & Preview Card
+              {isSaving ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Wand2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              )}
+              <span>{isSaving ? 'Saving Card...' : 'Save & Preview Card'}</span>
             </button>
             
             {/* Secondary Actions */}
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <button
+                disabled={isSaving}
                 onClick={async () => {
+                  if (isSaving) return;
+                  setIsSaving(true);
                   try {
-                    const res = await fetchWithCsrf('/api/wishes', {
-                      method: 'POST',
+                    stopTune();
+                    setIsPlayingTestMusic(false);
+                    const currentId = activeCardId || cardId;
+                    const url = currentId ? `/api/wishes/${currentId}` : '/api/wishes';
+                    const method = currentId ? 'PUT' : 'POST';
+                    const res = await fetchWithCsrf(url, {
+                      method,
                       headers: { 
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}` 
@@ -1017,10 +1426,20 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
                       body: JSON.stringify(data)
                     });
                     
-                    if (!res.ok) throw new Error('Failed to save card');
+                    if (!res.ok) {
+                      const errJson = await res.json().catch(() => ({}));
+                      throw new Error(errJson.error || errJson.message || 'Failed to save card');
+                    }
+                    const saved = await res.json();
+                    if (!currentId && saved?.id) {
+                      setActiveCardId(saved.id);
+                      if (onCardSaved) onCardSaved(saved.id);
+                    }
                     
-                    // Clear draft after save
-                    localStorage.removeItem('magic_card_draft');
+                    // Clear draft after save when creating new card
+                    if (!currentId) {
+                      localStorage.removeItem(AUTOSAVE_KEY);
+                    }
                     toast('Card saved successfully! ✨', 'success');
                     
                     // Navigate back to dashboard after short delay
@@ -1028,20 +1447,23 @@ export function CardEditor({ initialData, onPreview, onSaveOnly }: CardEditorPro
                       if (onSaveOnly) {
                         onSaveOnly();
                       }
-                    }, 800); // Short delay to show success message
-                  } catch(e) {
-                    toast('Failed to save card. Please try again.', 'error');
+                    }, 500);
+                  } catch(e: any) {
+                    toast(e?.message || 'Failed to save card. Please try again.', 'error');
+                  } finally {
+                    setIsSaving(false);
                   }
                 }}
-                className="flex justify-center items-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 px-3 sm:px-4 bg-white/70 backdrop-blur-sm border-2 border-pink-200 text-pink-600 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold hover:bg-pink-50 hover:border-pink-300 transition-all"
+                className="flex justify-center items-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 px-3 sm:px-4 bg-white/70 backdrop-blur-sm border-2 border-pink-200 text-pink-600 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold hover:bg-pink-50 hover:border-pink-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span>Save Only</span>
+                <span>{isSaving ? 'Saving...' : 'Save Only'}</span>
               </button>
               
               <button
+                disabled={isSaving}
                 onClick={handleCopy}
-                className="flex justify-center items-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 px-3 sm:px-4 bg-white/70 backdrop-blur-sm border-2 border-blue-200 text-blue-600 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold hover:bg-blue-50 hover:border-blue-300 transition-all"
+                className="flex justify-center items-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 px-3 sm:px-4 bg-white/70 backdrop-blur-sm border-2 border-blue-200 text-blue-600 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold hover:bg-blue-50 hover:border-blue-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {copied ? <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-500" /> : <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                 <span>{copied ? 'Copied!' : 'Get Link'}</span>

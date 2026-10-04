@@ -7,7 +7,7 @@ import { PuzzleSequence } from '../PuzzleSequence';
 import { UnwrapBox } from '../UnwrapBox';
 import { CountdownLock } from '../CountdownLock';
 import { ReviewForm } from '../ReviewForm';
-import { CardData } from '../../types';
+import { CardData, ThemeType } from '../../types';
 import { encodeCardData } from '../../lib/utils';
 import { motion } from 'motion/react';
 import { stopTune } from '../../lib/audio';
@@ -130,6 +130,7 @@ export default function Dashboard() {
   useEffect(() => {
     const createParam = searchParams.get('create');
     const editParam = searchParams.get('edit');
+    const themeParam = searchParams.get('theme');
     
     if (createParam === 'true') {
       // Restore create mode from URL
@@ -144,11 +145,21 @@ export default function Dashboard() {
         if (draft) {
           try {
             const parsedDraft = JSON.parse(draft);
+            if (themeParam) {
+              parsedDraft.theme = themeParam;
+            }
             setCardData(parsedDraft);
           } catch (e) {
             console.error('Failed to parse draft', e);
+            if (themeParam) {
+              setCardData(prev => ({ ...prev, theme: themeParam as ThemeType }));
+            }
           }
+        } else if (themeParam) {
+          setCardData(prev => ({ ...prev, theme: themeParam as ThemeType }));
         }
+      } else if (themeParam && cardData.theme !== themeParam) {
+        setCardData(prev => ({ ...prev, theme: themeParam as ThemeType }));
       }
     } else if (editParam) {
       // Restore edit mode from URL
@@ -165,18 +176,28 @@ export default function Dashboard() {
             }
           }
           
-          if (parsedData) {
-            setCardData(parsedData);
-          } else {
+          const baseData: CardData = {
+            to: cardToEdit.recipient || '',
+            from: cardToEdit.sender || user?.name || '',
+            message: cardToEdit.message || '',
+            theme: (cardToEdit.theme as ThemeType) || 'party',
+            music: 'happy_birthday',
+            enablePuzzles: true,
+            puzzleLanguage: 'english',
+            surprisePhoto: 'none'
+          };
+          
+          if (parsedData && typeof parsedData === 'object') {
             setCardData({
-              to: cardToEdit.recipient,
-              from: user?.name || '',
-              message: cardToEdit.message,
-              theme: cardToEdit.theme || 'party',
-              music: 'happy_birthday',
-              enablePuzzles: true,
-              puzzleLanguage: 'english'
+              ...baseData,
+              ...parsedData,
+              to: parsedData.to || cardToEdit.recipient || '',
+              from: parsedData.from || cardToEdit.sender || user?.name || '',
+              message: parsedData.message || cardToEdit.message || '',
+              theme: parsedData.theme || (cardToEdit.theme as ThemeType) || 'party',
             });
+          } else {
+            setCardData(baseData);
           }
           setEditingCardId(editParam);
           setIsCreating(true);
@@ -218,7 +239,7 @@ export default function Dashboard() {
     
     // Prevent multiple submissions
     if (submittingContact) {
-      console.log('Already submitting, ignoring duplicate click');
+
       return;
     }
     
@@ -472,10 +493,20 @@ export default function Dashboard() {
         body: JSON.stringify(data)
       });
       
-      if (!res.ok) throw new Error('Failed to save card');
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || errJson.message || 'Failed to save card');
+      }
 
-      // Clear the autosave draft after successful save
-      localStorage.removeItem('magic_card_draft');
+      const savedCard = await res.json();
+      if (!editingCardId && savedCard?.id) {
+        setEditingCardId(savedCard.id);
+      }
+
+      // Clear the autosave draft only after saving a new card
+      if (!editingCardId) {
+        localStorage.removeItem('magic_card_draft');
+      }
 
       fetchWishes();
       toast(editingCardId ? 'Card successfully updated!' : 'Card successfully created!', 'success');
@@ -488,8 +519,8 @@ export default function Dashboard() {
           zIndex: 100
         });
       }
-    } catch(e) {
-      toast('Failed to save card', 'error');
+    } catch(e: any) {
+      toast(e?.message || 'Failed to save card', 'error');
       return; // Don't proceed to preview if save failed
     }
 
@@ -516,18 +547,28 @@ export default function Dashboard() {
         }
     }
     
-    if (parsedData) {
-        setCardData(parsedData);
-    } else {
+    const baseData: CardData = {
+        to: wish.recipient || '',
+        from: wish.sender || user?.name || '',
+        message: wish.message || '',
+        theme: (wish.theme as ThemeType) || 'party',
+        music: 'happy_birthday',
+        enablePuzzles: true,
+        puzzleLanguage: 'english',
+        surprisePhoto: 'none'
+    };
+
+    if (parsedData && typeof parsedData === 'object') {
         setCardData({
-            to: wish.recipient,
-            from: user?.name || '',
-            message: wish.message,
-            theme: wish.theme || 'party',
-            music: 'happy_birthday',
-            enablePuzzles: true,
-            puzzleLanguage: 'english'
+            ...baseData,
+            ...parsedData,
+            to: parsedData.to || wish.recipient || '',
+            from: parsedData.from || wish.sender || user?.name || '',
+            message: parsedData.message || wish.message || '',
+            theme: parsedData.theme || (wish.theme as ThemeType) || 'party',
         });
+    } else {
+        setCardData(baseData);
     }
     setEditingCardId(wish.id);
     navigate(`/dashboard?edit=${wish.id}`);
@@ -569,7 +610,7 @@ export default function Dashboard() {
       } catch (err: any) {
         // Fallback to clipboard if user cancels share dialog
         if (err.name !== 'AbortError') {
-           console.log('Share error:', err);
+
         }
       }
     }
@@ -620,6 +661,7 @@ export default function Dashboard() {
     setEditingCardId(null);
     navigate('/dashboard');
     stopTune();
+    fetchWishes();
   };
 
   const getNextBirthdayData = () => {
@@ -671,8 +713,16 @@ export default function Dashboard() {
 
   if (isPreview) {
     return (
-      <div className="flex-1 relative font-sans flex flex-col overflow-hidden bg-[#FFF0F5]">
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[#FFD1DC] rounded-full blur-[120px] opacity-60 pointer-events-none z-0"></div>
+      <div className="fixed inset-0 z-50 font-sans flex flex-col overflow-hidden bg-[#FFF0F5] h-dvh w-screen">
+        <div className="absolute top-4 left-4 z-50">
+          <button
+            onClick={closeEditor}
+            className="flex items-center gap-1.5 px-4 py-2 bg-white/80 hover:bg-white text-gray-700 hover:text-pink-600 rounded-full text-xs font-bold shadow-md transition-all backdrop-blur-md border border-pink-100"
+          >
+            ← Back to Dashboard
+          </button>
+        </div>
+        <div className="absolute top-[-10%] left-[-10%] w-125 h-125 bg-[#FFD1DC] rounded-full blur-[120px] opacity-60 pointer-events-none z-0"></div>
         <div className="relative z-10 flex-1 flex flex-col items-center justify-center w-full mx-auto relative h-full">
            {isLocked ? (
                <CountdownLock 
@@ -706,7 +756,14 @@ export default function Dashboard() {
           <button onClick={closeEditor} className="text-pink-500 font-bold hover:text-pink-700">Cancel</button>
         </div>
         <div className="bg-white/40 backdrop-blur-xl rounded-3xl sm:rounded-[2.5rem] p-0 sm:p-5 shadow-none sm:shadow-[0_20px_50px_rgb(0,0,0,0.05)] border-0 sm:border border-white/60 relative">
-          <CardEditor initialData={cardData!} onPreview={handlePreview} onSaveOnly={closeEditor} />
+          <CardEditor
+            key={editingCardId || 'new'}
+            initialData={cardData!}
+            onPreview={handlePreview}
+            onSaveOnly={closeEditor}
+            cardId={editingCardId}
+            onCardSaved={setEditingCardId}
+          />
         </div>
       </div>
     );
@@ -714,17 +771,17 @@ export default function Dashboard() {
 
   return (
     <div className={`max-w-6xl w-full mx-auto p-4 md:p-8 flex flex-col z-10 py-6 sm:py-10 ${themeStyle.bg} min-h-screen relative overflow-hidden transition-colors duration-500`}>
-      <div className={`absolute top-[-10%] left-[-10%] w-[500px] h-[500px] ${themeStyle.blobs[0]} rounded-full blur-[120px] opacity-60 pointer-events-none z-0 transition-colors duration-500`}></div>
+      <div className={`absolute top-[-10%] left-[-10%] w-125 h-125 ${themeStyle.blobs[0]} rounded-full blur-[120px] opacity-60 pointer-events-none z-0 transition-colors duration-500`}></div>
       
       {/* Email Verification Warning Banner */}
       {!user?.verified && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-6 shadow-lg"
+          className="mb-6 bg-linear-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-6 shadow-lg"
         >
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
               <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
@@ -752,7 +809,7 @@ export default function Dashboard() {
           </div>
         </motion.div>
       )}
-      <div className={`absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] ${themeStyle.blobs[1]} rounded-full blur-[120px] opacity-60 pointer-events-none z-0 transition-colors duration-500`}></div>
+      <div className={`absolute bottom-[-10%] right-[-10%] w-125 h-125 ${themeStyle.blobs[1]} rounded-full blur-[120px] opacity-60 pointer-events-none z-0 transition-colors duration-500`}></div>
 
       <div className="relative z-10 w-full flex flex-col">
       {!user?.verified && (
@@ -1123,7 +1180,7 @@ export default function Dashboard() {
                         <img src={contactImagePreview} alt="Contact" className="w-full h-full object-cover" />
                       </div>
                     ) : (
-                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-pink-400 to-rose-400 flex items-center justify-center text-white text-3xl font-bold shadow-lg border-4 border-white">
+                      <div className="w-24 h-24 rounded-full bg-linear-to-br from-pink-400 to-rose-400 flex items-center justify-center text-white text-3xl font-bold shadow-lg border-4 border-white">
                         {newContact.name ? newContact.name.charAt(0).toUpperCase() : '👤'}
                       </div>
                     )}
@@ -1210,7 +1267,7 @@ export default function Dashboard() {
                   <textarea
                     value={newContact.notes}
                     onChange={e => setNewContact({...newContact, notes: e.target.value})}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-300 min-h-[80px]"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-300 min-h-20"
                     placeholder="Gift preferences, favorite things, etc..."
                   />
                 </div>
@@ -1287,7 +1344,7 @@ export default function Dashboard() {
 
                         {/* Milestone Badge */}
                         {milestone && (
-                          <div className="absolute top-3 left-3 bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs font-black px-3 py-1 rounded-full shadow-md">
+                          <div className="absolute top-3 left-3 bg-linear-to-r from-yellow-400 to-orange-400 text-white text-xs font-black px-3 py-1 rounded-full shadow-md">
                             🎊 {milestone}
                           </div>
                         )}
@@ -1295,11 +1352,11 @@ export default function Dashboard() {
                         <div className="flex items-start justify-between mb-3 mt-8">
                           <div className="flex items-center gap-3">
                             {c.imageUrl ? (
-                              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-pink-300 shadow-md flex-shrink-0">
+                              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-pink-300 shadow-md shrink-0">
                                 <img src={c.imageUrl} alt={c.name} className="w-full h-full object-cover" />
                               </div>
                             ) : (
-                              <div className="w-14 h-14 bg-gradient-to-br from-pink-400 to-rose-400 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md flex-shrink-0">
+                              <div className="w-14 h-14 bg-linear-to-br from-pink-400 to-rose-400 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md shrink-0">
                                 {c.name.charAt(0).toUpperCase()}
                               </div>
                             )}

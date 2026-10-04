@@ -6,8 +6,6 @@ const REDIS_URL = process.env.REDIS_URL?.trim();
 
 let connection: Redis | null = null;
 let emailQueue: Queue | null = null;
-let reconnectionAttempts = 0;
-const MAX_RECONNECTION_ATTEMPTS = process.env.NODE_ENV === 'production' ? 10 : 5;
 
 // Only initialize Redis if REDIS_URL is explicitly set, non-empty, and not default localhost
 const isRedisConfigured = Boolean(
@@ -23,30 +21,25 @@ if (isRedisConfigured && REDIS_URL) {
       maxRetriesPerRequest: null,
       enableReadyCheck: false,
       connectTimeout: 20000,
-      keepAlive: 30000,
+      keepAlive: 10000, // Active TCP keepalive
       lazyConnect: false,
       enableOfflineQueue: true,
-      family: 0, // CRITICAL: Fixes Upstash connection timeouts in Node > 18
+      family: 4, // CRITICAL: Upstash Redis uses IPv4. Setting family: 4 avoids IPv6 ENOTFOUND/EHOSTUNREACH dual-stack errors in Node 18+ on Windows
       retryStrategy(times: number) {
-        reconnectionAttempts = times;
-        
-        if (times > MAX_RECONNECTION_ATTEMPTS) {
-          logger.warn(`Redis reconnection stopped after ${MAX_RECONNECTION_ATTEMPTS} attempts. Disabling queue.`);
-          return null; // Stop reconnecting
-        }
-        
-        // Exponential backoff with max 5 seconds
+        // Continuous exponential backoff capped at 5 seconds
+        // Upstash Serverless routinely closes idle sockets after 30s of inactivity.
+        // Attempt 1-2 is a normal background socket refresh; log as debug so console isn't spammed.
         const delay = Math.min(times * 500, 5000);
-        logger.info('Redis retry attempt', { attempt: times, delayMs: delay });
+        if (times >= 3 && times % 5 === 0) {
+          logger.warn('Redis reconnection taking multiple attempts...', { attempt: times, delayMs: delay });
+        } else {
+          logger.debug('Redis background reconnect attempt', { attempt: times, delayMs: delay });
+        }
         return delay;
       },
       reconnectOnError(err: Error) {
         const msg = err.message || '';
-        // Never reconnect on DNS lookup failure (ENOTFOUND)
-        if (msg.includes('ENOTFOUND')) {
-          return false;
-        }
-        const targetErrors = ['READONLY', 'ECONNRESET', 'ETIMEDOUT', 'ENETUNREACH'];
+        const targetErrors = ['READONLY', 'ECONNRESET', 'ETIMEDOUT', 'ENETUNREACH', 'EHOSTUNREACH'];
         if (targetErrors.some(e => msg.includes(e))) {
           logger.info('Redis reconnecting due to error', { error: msg });
           return true;
@@ -67,14 +60,24 @@ if (isRedisConfigured && REDIS_URL) {
     connection.on('error', (err: any) => {
       const isDnsError = err?.code === 'ENOTFOUND' || err?.message?.includes('ENOTFOUND');
       if (isDnsError) {
-        logger.warn(`Redis host '${err?.hostname || 'unresolved'}' not found (ENOTFOUND). Please verify REDIS_URL.`);
+        logger.warn(`Redis host '${err?.hostname || 'unresolved'}' not found (ENOTFOUND). Waiting for network / DNS...`);
+        return;
+      }
+      const isReset = err?.code === 'ECONNRESET' || err?.message?.includes('ECONNRESET');
+      if (isReset) {
+        // Upstash serverless drops idle sockets; ioredis auto-reconnects smoothly
+        logger.debug('Redis idle connection reset by serverless host - auto-reconnecting...');
+        return;
+      }
+      const isUnreach = err?.code === 'EHOSTUNREACH' || err?.message?.includes('EHOSTUNREACH') || err?.name === 'AggregateError';
+      if (isUnreach) {
+        logger.debug('Redis host temporarily unreachable - auto-reconnecting...');
         return;
       }
       logger.error('Redis connection error', err, { code: err?.code });
     });
 
     connection.on('connect', () => {
-      reconnectionAttempts = 0;
       logger.info('Redis connected successfully');
     });
 
@@ -83,16 +86,27 @@ if (isRedisConfigured && REDIS_URL) {
     });
 
     connection.on('close', () => {
-      logger.warn('Redis connection closed');
+      logger.debug('Redis connection closed (reconnecting)');
     });
 
     connection.on('reconnecting', (delay: number) => {
-      logger.info('Redis reconnecting', { attempt: reconnectionAttempts, delayMs: delay });
+      logger.debug('Redis reconnecting', { delayMs: delay });
     });
 
     connection.on('end', () => {
-      logger.warn('Redis connection ended');
+      logger.warn('Redis connection closed');
     });
+
+    // Upstash serverless TCP keepalive: ping every 20 seconds to prevent idle timeout
+    const keepAliveTimer = setInterval(() => {
+      if (connection && (connection.status === 'ready' || connection.status === 'connect')) {
+        connection.ping().catch(() => {});
+      }
+    }, 20000);
+
+    if (keepAliveTimer.unref) {
+      keepAliveTimer.unref();
+    }
 
     emailQueue = new Queue("email-queue", { 
       connection: connection as any,

@@ -2,8 +2,11 @@ import { Router } from 'express';
 import { db } from '../../db/index';
 import { users } from '../../db/schema';
 import { eq } from 'drizzle-orm';
-import { authenticate, AuthenticatedRequest } from '../middleware/auth';
+import { authenticate, AuthenticatedRequest, invalidateUserCache } from '../middleware/auth';
 import bcrypt from 'bcryptjs';
+import { validatePassword } from '../lib/passwordValidation';
+
+const BCRYPT_COST = 12;
 
 const router = Router();
 
@@ -11,42 +14,15 @@ const router = Router();
 router.use(authenticate);
 
 // Get current user profile
-router.get('/me', async (req: AuthenticatedRequest, res) => {
+router.get('/me', (req: AuthenticatedRequest, res) => {
   try {
-    const userId = req.user?.id;
+    const user = req.user;
     
-    if (!userId) {
+    if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     
-    const result = await db
-      .select({
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        role: users.role,
-        verified: users.verified,
-        avatarUrl: users.avatarUrl,
-        bio: users.bio,
-        phone: users.phone,
-        birthday: users.birthday,
-        location: users.location,
-        timezone: users.timezone,
-        createdAt: users.createdAt,
-        password: users.password,
-        oauthProvider: users.oauthProvider,
-      })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (result.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const user = result[0];
-    
-    // Provide a comprehensive user object including Google auth status
+    // req.user is already retrieved and cached in authenticate middleware
     res.json({
       id: user.id,
       name: user.name,
@@ -60,7 +36,7 @@ router.get('/me', async (req: AuthenticatedRequest, res) => {
       location: user.location,
       timezone: user.timezone,
       createdAt: user.createdAt,
-      hasPassword: !!user.password,
+      hasPassword: Boolean(user.password),
       isGoogleLinked: user.oauthProvider === 'google'
     });
   } catch (error) {
@@ -118,6 +94,8 @@ router.put('/me', async (req: AuthenticatedRequest, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    invalidateUserCache(userId);
+
     res.json({ message: 'Profile updated successfully', user: result[0] });
   } catch (error) {
     console.error('Error updating profile:', error);
@@ -141,8 +119,12 @@ router.put('/change-password', async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ error: 'Current and new password are required' });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({ 
+        error: 'New password does not meet requirements',
+        details: passwordValidation.errors
+      });
     }
 
     // Get current user
@@ -163,13 +145,15 @@ router.put('/change-password', async (req: AuthenticatedRequest, res) => {
     }
 
     // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_COST);
 
     // Update password
     await db
       .update(users)
       .set({ password: hashedPassword })
       .where(eq(users.id, userId));
+
+    invalidateUserCache(userId);
 
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
@@ -194,8 +178,12 @@ router.post('/set-password', async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ error: 'New password is required' });
     }
 
-    if (newPassword.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({ 
+        error: 'Password does not meet requirements',
+        details: passwordValidation.errors
+      });
     }
 
     // Get current user
@@ -217,13 +205,15 @@ router.post('/set-password', async (req: AuthenticatedRequest, res) => {
     }
 
     // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_COST);
 
     // Update password
     await db
       .update(users)
       .set({ password: hashedPassword })
       .where(eq(users.id, userId));
+
+    invalidateUserCache(userId);
 
     res.json({ message: 'Password set successfully' });
   } catch (error) {
@@ -241,16 +231,11 @@ router.delete('/me', async (req: AuthenticatedRequest, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     
-    const { password } = req.body;
-
-    // Validate password
-    if (!password) {
-      return res.status(400).json({ error: 'Password is required to delete account' });
-    }
+    const { password, confirmDelete } = req.body;
 
     // Get current user
     const result = await db
-      .select({ password: users.password })
+      .select({ password: users.password, oauthProvider: users.oauthProvider })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
@@ -259,14 +244,31 @@ router.delete('/me', async (req: AuthenticatedRequest, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Verify password
-    const isValid = await bcrypt.compare(password, result[0].password);
-    if (!isValid) {
-      return res.status(401).json({ error: 'Incorrect password' });
+    const userRecord = result[0];
+
+    if (userRecord.password) {
+      // Password-based account: require password verification
+      if (!password) {
+        return res.status(400).json({ error: 'Password is required to delete account' });
+      }
+      const isValid = await bcrypt.compare(password, userRecord.password);
+      if (!isValid) {
+        return res.status(401).json({ error: 'Incorrect password' });
+      }
+    } else {
+      // OAuth-only account: require explicit confirmation string
+      if (confirmDelete !== 'DELETE MY ACCOUNT') {
+        return res.status(400).json({ 
+          error: 'Please type "DELETE MY ACCOUNT" to confirm account deletion',
+          oauthOnly: true
+        });
+      }
     }
 
     // Delete user (cascade will delete related data)
     await db.delete(users).where(eq(users.id, userId));
+
+    invalidateUserCache(userId);
 
     res.json({ message: 'Account deleted successfully' });
   } catch (error) {

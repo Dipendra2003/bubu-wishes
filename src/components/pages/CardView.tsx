@@ -114,8 +114,8 @@ export default function CardView() {
   };
 
   return (
-    <div className="flex-1 relative font-sans flex flex-col overflow-hidden bg-[#FFF0F5] h-screen w-screen absolute inset-0 z-50">
-      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[#FFD1DC] rounded-full blur-[120px] opacity-60 pointer-events-none z-0"></div>
+    <div className="flex-1 relative font-sans flex flex-col overflow-hidden bg-[#FFF0F5] h-dvh w-screen absolute inset-0 z-50">
+      <div className="absolute top-[-10%] left-[-10%] w-125 h-125 bg-[#FFD1DC] rounded-full blur-[120px] opacity-60 pointer-events-none z-0"></div>
       
       {cardData && !isLocked && puzzlesSolved && isBoxUnwrapped && (
         <button 

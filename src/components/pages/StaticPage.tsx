@@ -13,12 +13,12 @@ export default function StaticPage({ title, subtitle, children }: { title: strin
   return (
     <div className="flex-1 relative font-sans flex flex-col bg-[#FFF0F5] w-full overflow-hidden">
       {/* Background orbs */}
-      <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-[#FFD1DC] rounded-full blur-[140px] opacity-50 pointer-events-none z-0 animate-pulse" style={{ animationDuration: '8s' }}></div>
-      <div className="absolute bottom-[-15%] right-[-10%] w-[500px] h-[500px] bg-[#B0E0E6] rounded-full blur-[140px] opacity-50 pointer-events-none z-0 animate-pulse" style={{ animationDuration: '10s' }}></div>
+      <div className="absolute top-[-15%] left-[-10%] w-125 h-125 bg-[#FFD1DC] rounded-full blur-[140px] opacity-50 pointer-events-none z-0 animate-pulse" style={{ animationDuration: '8s' }}></div>
+      <div className="absolute bottom-[-15%] right-[-10%] w-125 h-125 bg-[#B0E0E6] rounded-full blur-[140px] opacity-50 pointer-events-none z-0 animate-pulse" style={{ animationDuration: '10s' }}></div>
       <div className="absolute top-[30%] right-[10%] w-[300px] h-[300px] bg-[#E8D5F5] rounded-full blur-[120px] opacity-30 pointer-events-none z-0"></div>
 
       {/* Hero Banner */}
-      <div className="relative z-10 w-full bg-gradient-to-br from-pink-500 via-rose-500 to-pink-600 overflow-hidden">
+      <div className="relative z-10 w-full bg-linear-to-br from-pink-500 via-rose-500 to-pink-600 overflow-hidden">
         {/* Decorative shapes */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3"></div>

@@ -28,7 +28,7 @@ export function csrfTokenGenerator(req: Request, res: Response, next: NextFuncti
     csrfToken = generateCsrfToken();
     
     res.cookie(CSRF_COOKIE_NAME, csrfToken, {
-      httpOnly: true,
+      httpOnly: false, // Must be false: double-submit pattern requires JS to read the cookie
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours

@@ -210,9 +210,9 @@ export function UnwrapBox({ onUnwrapped, theme }: UnwrapBoxProps) {
                 <motion.div 
                   className={cn(
                     "h-full rounded-full transition-all duration-300 relative overflow-hidden",
-                    theme === 'love' ? "bg-gradient-to-r from-red-400 to-pink-500" : 
-                    theme === 'party' ? "bg-gradient-to-r from-orange-400 to-amber-500" : 
-                    "bg-gradient-to-r from-blue-400 to-indigo-500"
+                    theme === 'love' ? "bg-linear-to-r from-red-400 to-pink-500" : 
+                    theme === 'party' ? "bg-linear-to-r from-orange-400 to-amber-500" : 
+                    "bg-linear-to-r from-blue-400 to-indigo-500"
                   )}
                   style={{ width: `${Math.max(10, (taps / requiredTaps) * 100)}%` }}
                 >

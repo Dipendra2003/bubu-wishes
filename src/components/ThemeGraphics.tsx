@@ -4,42 +4,42 @@ import { ThemeType, PhotoType } from '../types';
 export const ThemeColors = {
   party: {
     bg: 'bg-amber-50',
-    cardOutside: 'bg-gradient-to-br from-amber-100 to-yellow-200',
+    cardOutside: 'bg-linear-to-br from-amber-100 to-yellow-200',
     cardInside: 'bg-[#fffaeb]',
     text: 'text-amber-900',
     accent: 'bg-yellow-400',
   },
   love: {
     bg: 'bg-rose-50',
-    cardOutside: 'bg-gradient-to-br from-rose-100 to-pink-200',
+    cardOutside: 'bg-linear-to-br from-rose-100 to-pink-200',
     cardInside: 'bg-[#fff0f3]',
     text: 'text-rose-900',
     accent: 'bg-rose-400',
   },
   sleepy: {
     bg: 'bg-indigo-50',
-    cardOutside: 'bg-gradient-to-br from-indigo-100 to-blue-200',
+    cardOutside: 'bg-linear-to-br from-indigo-100 to-blue-200',
     cardInside: 'bg-[#f5f8ff]',
     text: 'text-indigo-900',
     accent: 'bg-indigo-400',
   },
   valentine: {
     bg: 'bg-red-50',
-    cardOutside: 'bg-gradient-to-br from-red-100 to-rose-300',
+    cardOutside: 'bg-linear-to-br from-red-100 to-rose-300',
     cardInside: 'bg-[#fff0f3]',
     text: 'text-red-900',
     accent: 'bg-red-500',
   },
   newyear: {
     bg: 'bg-slate-50',
-    cardOutside: 'bg-gradient-to-br from-slate-200 to-amber-100',
+    cardOutside: 'bg-linear-to-br from-slate-200 to-amber-100',
     cardInside: 'bg-[#f8fafc]',
     text: 'text-slate-900',
     accent: 'bg-amber-500',
   },
   christmas: {
     bg: 'bg-emerald-50',
-    cardOutside: 'bg-gradient-to-br from-emerald-100 to-red-100',
+    cardOutside: 'bg-linear-to-br from-emerald-100 to-red-100',
     cardInside: 'bg-[#f0fdf4]',
     text: 'text-emerald-900',
     accent: 'bg-emerald-500',
@@ -88,277 +88,533 @@ const BearFace = ({ color, ears, eyeType = 'open', blush = true }: any) => (
 );
 
 export const BubuDuduParty = () => (
-    <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-lg pb-4">
+    <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-2xl pb-4 overflow-visible">
+      <defs>
+        {/* 3D Claymorphism filter for the bears and objects */}
+        <filter id="clay-3d" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="1" dy="4" stdDeviation="3" floodColor="#000" floodOpacity="0.15" result="shadow"/>
+          <feComponentTransfer in="SourceAlpha" result="alpha"/>
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feOffset dx="-2.5" dy="-2.5" result="offsetBlur"/>
+          <feComposite in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff"/>
+          <feFlood floodColor="white" floodOpacity="0.75"/>
+          <feComposite in2="shadowDiff" operator="in"/>
+          <feComposite in2="SourceGraphic" operator="over" result="highlight"/>
+          <feOffset in="blur" dx="2.5" dy="2.5" result="offsetBlur2"/>
+          <feComposite in="offsetBlur2" in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff2"/>
+          <feFlood floodColor="black" floodOpacity="0.1"/>
+          <feComposite in2="shadowDiff2" operator="in"/>
+          <feComposite in2="highlight" operator="over"/>
+        </filter>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+
+      <style>{`
+        .party-anim-float-bubu { animation: party-float-bear 3s ease-in-out infinite; transform-origin: 50px 50px; }
+        .party-anim-float-dudu { animation: party-float-bear 3s ease-in-out infinite 1.5s; transform-origin: 50px 50px; }
+        .party-anim-party-float-balloon1 { animation: party-float-balloon 4s ease-in-out infinite; transform-origin: 160px 40px; }
+        .party-anim-party-float-balloon2 { animation: party-float-balloon 3.5s ease-in-out infinite 1s; transform-origin: 30px 60px; }
+        .party-anim-party-float-cake { animation: party-float-cake 2.5s ease-in-out infinite 0.75s; }
+        .party-anim-confetti { animation: party-spin-confetti 6s linear infinite; transform-origin: center; }
+        
+        @keyframes party-float-bear {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-4px) rotate(2deg); }
+        }
+        @keyframes party-float-balloon {
+          0%, 100% { transform: translateY(0) rotate(-2deg); }
+          50% { transform: translateY(-8px) rotate(3deg); }
+        }
+        @keyframes party-float-cake {
+          0%, 100% { transform: translateY(0) scale(1.1); }
+          50% { transform: translateY(-3px) scale(1.1); }
+        }
+        @keyframes party-spin-confetti {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+
       {/* Background Banners */}
-      <path d="M 10 25 Q 50 45 100 25 Q 150 45 190 25" fill="none" stroke="#fbbf24" strokeWidth="2" />
-      <polygon points="20,30 30,22 40,33" fill="#f472b6" />
-      <polygon points="60,38 70,30 80,41" fill="#60a5fa" />
-      <polygon points="120,38 130,30 140,41" fill="#34d399" />
-      <polygon points="160,30 170,22 180,33" fill="#fb7185" />
+      <g filter="url(#clay-3d)">
+        <path d="M 10 25 Q 50 45 100 25 Q 150 45 190 25" fill="none" stroke="#fbbf24" strokeWidth="2.5" />
+        <polygon points="20,30 30,22 40,33" fill="#f472b6" />
+        <polygon points="60,38 70,30 80,41" fill="#60a5fa" />
+        <polygon points="120,38 130,30 140,41" fill="#34d399" />
+        <polygon points="160,30 170,22 180,33" fill="#fb7185" />
+      </g>
       
       {/* Confetti / background elements */}
-      <circle cx="20" cy="50" r="3" fill="#fbbf24" />
-      <circle cx="170" cy="60" r="4" fill="#f472b6" />
-      <circle cx="100" cy="10" r="3" fill="#60a5fa" />
-      <circle cx="40" cy="110" r="4" fill="#34d399" />
-      <circle cx="180" cy="100" r="3" fill="#fcd34d" />
-      <polygon points="25,12 28,15 22,18" fill="#ec4899" />
-      <polygon points="155,15 158,10 162,14" fill="#3b82f6" />
-      <polygon points="85,55 88,52 92,57" fill="#10b981" />
+      <g className="party-anim-confetti">
+        <circle cx="20" cy="50" r="3.5" fill="#fbbf24" filter="url(#glow)"/>
+        <circle cx="170" cy="60" r="4.5" fill="#f472b6" filter="url(#glow)"/>
+        <circle cx="100" cy="10" r="3.5" fill="#60a5fa" filter="url(#glow)"/>
+        <circle cx="40" cy="110" r="4.5" fill="#34d399" filter="url(#glow)"/>
+        <circle cx="180" cy="100" r="3.5" fill="#fcd34d" filter="url(#glow)"/>
+        <polygon points="25,12 28,15 22,18" fill="#ec4899" />
+        <polygon points="155,15 158,10 162,14" fill="#3b82f6" />
+        <polygon points="85,55 88,52 92,57" fill="#10b981" />
+      </g>
       
       {/* Floating Balloons */}
-      <g transform="translate(160, 40)">
-        <path d="M 0 0 C -15 -20 -15 -40 0 -40 C 15 -40 15 -20 0 0 Z" fill="#60a5fa" opacity="0.85" />
-        <path d="M 0 0 L -5 5 L 5 5 Z" fill="#60a5fa" />
-        <path d="M 0 5 Q -5 15 5 25" fill="none" stroke="#94a3b8" strokeWidth="1" />
-        <ellipse cx="-4" cy="-25" rx="2" ry="5" fill="#fff" opacity="0.4" transform="rotate(20 -4 -25)" />
+      <g className="party-anim-party-float-balloon1">
+        <g transform="translate(160, 40)" filter="url(#clay-3d)">
+          <path d="M 0 0 C -15 -20 -15 -40 0 -40 C 15 -40 15 -20 0 0 Z" fill="#60a5fa" opacity="0.95" />
+          <path d="M 0 0 L -5 5 L 5 5 Z" fill="#60a5fa" />
+          <path d="M 0 5 Q -5 15 5 25" fill="none" stroke="#94a3b8" strokeWidth="1.5" />
+          <ellipse cx="-4" cy="-25" rx="3" ry="7" fill="#fff" opacity="0.6" transform="rotate(20 -4 -25)" />
+        </g>
       </g>
-      <g transform="translate(30, 60)">
-        <path d="M 0 0 C -12 -16 -12 -32 0 -32 C 12 -32 12 -16 0 0 Z" fill="#f472b6" opacity="0.85" />
-        <path d="M 0 0 L -4 4 L 4 4 Z" fill="#f472b6" />
-        <path d="M 0 4 Q 5 12 -5 20" fill="none" stroke="#94a3b8" strokeWidth="1" />
-        <ellipse cx="-3" cy="-20" rx="1.5" ry="4" fill="#fff" opacity="0.4" transform="rotate(20 -3 -20)" />
+      
+      <g className="party-anim-party-float-balloon2">
+        <g transform="translate(30, 60)" filter="url(#clay-3d)">
+          <path d="M 0 0 C -12 -16 -12 -32 0 -32 C 12 -32 12 -16 0 0 Z" fill="#f472b6" opacity="0.95" />
+          <path d="M 0 0 L -4 4 L 4 4 Z" fill="#f472b6" />
+          <path d="M 0 4 Q 5 12 -5 20" fill="none" stroke="#94a3b8" strokeWidth="1.5" />
+          <ellipse cx="-3" cy="-20" rx="2.5" ry="6" fill="#fff" opacity="0.6" transform="rotate(20 -3 -20)" />
+        </g>
       </g>
       
       {/* Dudu (Brown Bear) */}
-      <g transform="translate(90, 45) scale(0.9)">
-        <BearFace color="#d4a373" ears="#a98467" eyeType="open" blush={true} />
-        {/* Party Hat */}
-        <path d="M 30 15 L 60 15 L 45 -20 Z" fill="#60a5fa" />
-        <circle cx="45" cy="-20" r="6" fill="#fcd34d" />
-        <circle cx="45" cy="-5" r="3" fill="#fff" opacity="0.5" />
-        <circle cx="38" cy="5" r="3" fill="#fff" opacity="0.5" />
-        <circle cx="52" cy="8" r="3" fill="#fff" opacity="0.5" />
+      <g className="party-anim-float-dudu">
+        <g transform="translate(90, 45) scale(0.95)" filter="url(#clay-3d)">
+          <BearFace color="#d4a373" ears="#a98467" eyeType="open" blush={true} />
+          {/* Party Hat */}
+          <path d="M 30 15 L 60 15 L 45 -20 Z" fill="#60a5fa" />
+          <circle cx="45" cy="-20" r="7" fill="#fcd34d" />
+          <circle cx="45" cy="-5" r="3.5" fill="#fff" opacity="0.8" />
+          <circle cx="38" cy="5" r="3.5" fill="#fff" opacity="0.8" />
+          <circle cx="52" cy="8" r="3.5" fill="#fff" opacity="0.8" />
+        </g>
       </g>
 
       {/* Bubu (White Bear) */}
-      <g transform="translate(10, 45) scale(0.9)">
-        <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="closed" blush={true} />
-        {/* Party Hat */}
-        <path d="M 35 18 L 65 18 L 55 -15 Z" fill="#f472b6" />
-        <circle cx="55" cy="-15" r="5" fill="#fcd34d" />
-        <path d="M 45 0 L 55 5 L 45 10 L 55 15" fill="none" stroke="#fff" strokeWidth="2" opacity="0.6" />
+      <g className="party-anim-float-bubu">
+        <g transform="translate(10, 45) scale(0.95)" filter="url(#clay-3d)">
+          <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="closed" blush={true} />
+          {/* Party Hat */}
+          <path d="M 35 18 L 65 18 L 55 -15 Z" fill="#f472b6" />
+          <circle cx="55" cy="-15" r="6" fill="#fcd34d" />
+          <path d="M 45 0 L 55 5 L 45 10 L 55 15" fill="none" stroke="#fff" strokeWidth="2.5" opacity="0.8" />
+        </g>
       </g>
 
       {/* Bigger Cake in middle */}
-      <g transform="translate(75, 85) scale(1.1)">
-        {/* Plate */}
-        <ellipse cx="20" cy="40" rx="30" ry="10" fill="#e2e8f0" />
-        <ellipse cx="20" cy="43" rx="28" ry="8" fill="#cbd5e1" opacity="0.5" />
-        
-        {/* Base Layer */}
-        <rect x="-5" y="25" width="50" height="15" fill="#fcd34d" rx="3" />
-        {/* Top Layer */}
-        <rect x="0" y="15" width="40" height="10" fill="#fbbf24" rx="2" />
-        
-        {/* Frosting */}
-        <path d="M -5 25 Q 0 30 5 25 T 15 25 T 25 25 T 35 25 T 45 25 V 15 Q 35 10 25 15 T 5 15 T -5 15 Z" fill="#fb7185" />
-        {/* Frosting drips */}
-        <circle cx="5" cy="27" r="3" fill="#fb7185" />
-        <circle cx="15" cy="29" r="3.5" fill="#fb7185" />
-        <circle cx="28" cy="28" r="3" fill="#fb7185" />
-        <circle cx="40" cy="26" r="2.5" fill="#fb7185" />
-        
-        {/* Sprinkles on plate/cake */}
-        <line x1="0" y1="35" x2="3" y2="33" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="30" y1="35" x2="33" y2="33" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="20" y1="28" x2="23" y2="30" stroke="#10b981" strokeWidth="1.5" strokeLinecap="round" />
+      <g className="party-anim-party-float-cake" transform="translate(75, 85)">
+        <g filter="url(#clay-3d)">
+          {/* Plate */}
+          <ellipse cx="20" cy="40" rx="35" ry="12" fill="#e2e8f0" />
+          <ellipse cx="20" cy="43" rx="32" ry="10" fill="#cbd5e1" opacity="0.7" />
+          
+          {/* Base Layer */}
+          <rect x="-10" y="22" width="60" height="18" fill="#fcd34d" rx="4" />
+          {/* Top Layer */}
+          <rect x="-2" y="10" width="44" height="12" fill="#fbbf24" rx="3" />
+          
+          {/* Frosting */}
+          <path d="M -10 22 Q -2 28 5 22 T 18 22 T 30 22 T 42 22 T 50 22 V 10 Q 35 4 20 10 T 0 10 T -10 10 Z" fill="#fb7185" />
+          {/* Frosting drips */}
+          <circle cx="2" cy="25" r="3.5" fill="#fb7185" />
+          <circle cx="15" cy="28" r="4.5" fill="#fb7185" />
+          <circle cx="30" cy="27" r="4" fill="#fb7185" />
+          <circle cx="45" cy="25" r="3.5" fill="#fb7185" />
+          
+          {/* Sprinkles on plate/cake */}
+          <line x1="-2" y1="35" x2="2" y2="33" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+          <line x1="32" y1="35" x2="36" y2="33" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" />
+          <line x1="20" y1="28" x2="24" y2="30" stroke="#10b981" strokeWidth="2" strokeLinecap="round" />
+        </g>
         
         {/* Candles */}
-        <g transform="translate(0, -3)">
-          <rect x="12" y="-5" width="4" height="15" fill="#fff" />
-          <path d="M 12 0 L 16 -3 L 12 -6 Z" fill="#f472b6" />
-          <circle cx="14" cy="-10" r="3" fill="#f59e0b" className="animate-pulse" />
-          <circle cx="14" cy="-14" r="1.5" fill="#fcd34d" className="animate-pulse" />
+        <g transform="translate(0, -6)">
+          <rect x="10" y="-8" width="5" height="18" fill="#fff" rx="1"/>
+          <path d="M 10 -1 L 15 -4 L 10 -7 Z" fill="#f472b6" />
+          <circle cx="12.5" cy="-14" r="4" fill="#f59e0b" filter="url(#glow)" className="animate-pulse" />
+          <circle cx="12.5" cy="-18" r="2" fill="#fcd34d" className="animate-pulse" />
           
-          <rect x="24" y="-5" width="4" height="15" fill="#fff" />
-          <path d="M 24 0 L 28 -3 L 24 -6 Z" fill="#60a5fa" />
-          <circle cx="26" cy="-10" r="3" fill="#f59e0b" className="animate-pulse" />
-          <circle cx="26" cy="-14" r="1.5" fill="#fcd34d" className="animate-pulse" />
+          <rect x="25" y="-8" width="5" height="18" fill="#fff" rx="1"/>
+          <path d="M 25 -1 L 30 -4 L 25 -7 Z" fill="#60a5fa" />
+          <circle cx="27.5" cy="-14" r="4" fill="#f59e0b" filter="url(#glow)" className="animate-pulse" />
+          <circle cx="27.5" cy="-18" r="2" fill="#fcd34d" className="animate-pulse" />
         </g>
       </g>
     </svg>
 );
 
 export const BubuDuduLove = () => (
-    <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-md pb-4">
+    <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-2xl pb-4 overflow-visible">
+      <defs>
+        <filter id="clay-3d-love" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="1" dy="4" stdDeviation="3" floodColor="#000" floodOpacity="0.15" result="shadow"/>
+          <feComponentTransfer in="SourceAlpha" result="alpha"/>
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feOffset dx="-2.5" dy="-2.5" result="offsetBlur"/>
+          <feComposite in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff"/>
+          <feFlood floodColor="white" floodOpacity="0.75"/>
+          <feComposite in2="shadowDiff" operator="in"/>
+          <feComposite in2="SourceGraphic" operator="over" result="highlight"/>
+          <feOffset in="blur" dx="2.5" dy="2.5" result="offsetBlur2"/>
+          <feComposite in="offsetBlur2" in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff2"/>
+          <feFlood floodColor="black" floodOpacity="0.1"/>
+          <feComposite in2="shadowDiff2" operator="in"/>
+          <feComposite in2="highlight" operator="over"/>
+        </filter>
+      </defs>
+      <style>{`
+        .love-anim-float-bubu { animation: love-float-bear 3s ease-in-out infinite; transform-origin: 50px 50px; }
+        .love-anim-float-dudu { animation: love-float-bear 3s ease-in-out infinite 1.5s; transform-origin: 50px 50px; }
+        .love-anim-heart { animation: love-pulse-heart 2s ease-in-out infinite; transform-origin: 85px 95px; }
+        @keyframes love-float-bear { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-4px) rotate(2deg); } }
+        @keyframes love-pulse-heart { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+      `}</style>
+
       {/* Hearts */}
-      <g fill="#fb7185" transform="scale(0.5) translate(60, 40)">
-        <path d="M 50 20 A 15 15 0 0 0 20 20 A 15 15 0 0 0 -10 20 Q -10 40 20 60 Q 50 40 50 20 Z" />
-      </g>
-      <g fill="#f43f5e" transform="scale(0.8) translate(180, 20) rotate(15)">
-        <path d="M 50 20 A 15 15 0 0 0 20 20 A 15 15 0 0 0 -10 20 Q -10 40 20 60 Q 50 40 50 20 Z" />
-      </g>
-      <g fill="#fecdd3" transform="scale(0.4) translate(300, 180) rotate(-15)">
-        <path d="M 50 20 A 15 15 0 0 0 20 20 A 15 15 0 0 0 -10 20 Q -10 40 20 60 Q 50 40 50 20 Z" />
+      <g filter="url(#clay-3d-love)">
+        <g fill="#fb7185" transform="scale(0.5) translate(60, 40)">
+          <path d="M 50 20 A 15 15 0 0 0 20 20 A 15 15 0 0 0 -10 20 Q -10 40 20 60 Q 50 40 50 20 Z" />
+        </g>
+        <g fill="#f43f5e" transform="scale(0.8) translate(180, 20) rotate(15)">
+          <path d="M 50 20 A 15 15 0 0 0 20 20 A 15 15 0 0 0 -10 20 Q -10 40 20 60 Q 50 40 50 20 Z" />
+        </g>
+        <g fill="#fecdd3" transform="scale(0.4) translate(300, 180) rotate(-15)">
+          <path d="M 50 20 A 15 15 0 0 0 20 20 A 15 15 0 0 0 -10 20 Q -10 40 20 60 Q 50 40 50 20 Z" />
+        </g>
       </g>
 
       {/* Dudu (Brown Bear) */}
-      <g transform="translate(85, 45) scale(0.9) rotate(-10)">
-        <BearFace color="#d4a373" ears="#a98467" eyeType="closed" blush={true} />
+      <g className="love-anim-float-dudu">
+        <g transform="translate(85, 45) scale(0.9) rotate(-10)" filter="url(#clay-3d-love)">
+          <BearFace color="#d4a373" ears="#a98467" eyeType="closed" blush={true} />
+        </g>
       </g>
 
       {/* Bubu (White Bear) */}
-      <g transform="translate(25, 45) scale(0.9) rotate(10)">
-        <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="open" blush={true} />
+      <g className="love-anim-float-bubu">
+        <g transform="translate(25, 45) scale(0.9) rotate(10)" filter="url(#clay-3d-love)">
+          <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="open" blush={true} />
+        </g>
       </g>
       
       {/* Big central heart they hold together */}
-      <g fill="#f43f5e" transform="translate(85, 95) scale(0.4)">
-        <path d="M 50 20 A 15 15 0 0 0 20 20 A 15 15 0 0 0 -10 20 Q -10 40 20 60 Q 50 40 50 20 Z" />
+      <g className="love-anim-heart">
+        <g fill="#f43f5e" transform="translate(85, 95) scale(0.4)" filter="url(#clay-3d-love)">
+          <path d="M 50 20 A 15 15 0 0 0 20 20 A 15 15 0 0 0 -10 20 Q -10 40 20 60 Q 50 40 50 20 Z" />
+        </g>
       </g>
     </svg>
 );
 
 export const BubuDuduValentine = () => (
-    <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-lg pb-4">
+    <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-2xl pb-4 overflow-visible">
+      <defs>
+        <filter id="clay-3d-val" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="1" dy="4" stdDeviation="3" floodColor="#000" floodOpacity="0.15" result="shadow"/>
+          <feComponentTransfer in="SourceAlpha" result="alpha"/>
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feOffset dx="-2.5" dy="-2.5" result="offsetBlur"/>
+          <feComposite in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff"/>
+          <feFlood floodColor="white" floodOpacity="0.75"/>
+          <feComposite in2="shadowDiff" operator="in"/>
+          <feComposite in2="SourceGraphic" operator="over" result="highlight"/>
+          <feOffset in="blur" dx="2.5" dy="2.5" result="offsetBlur2"/>
+          <feComposite in="offsetBlur2" in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff2"/>
+          <feFlood floodColor="black" floodOpacity="0.1"/>
+          <feComposite in2="shadowDiff2" operator="in"/>
+          <feComposite in2="highlight" operator="over"/>
+        </filter>
+      </defs>
+      <style>{`
+        .val-anim-float-bubu { animation: val-float-bear 3s ease-in-out infinite; transform-origin: 50px 50px; }
+        .val-anim-float-dudu { animation: val-float-bear 3s ease-in-out infinite 1.5s; transform-origin: 50px 50px; }
+        .val-anim-heart { animation: val-pulse-heart 2s ease-in-out infinite; transform-origin: center; }
+        @keyframes val-float-bear { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-4px) rotate(2deg); } }
+        @keyframes val-pulse-heart { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+      `}</style>
+
       {/* Background Hearts */}
-      <g fill="#fecaca" transform="scale(0.8) translate(30, 20)">
-        <path d="M 50 20 A 15 15 0 0 0 20 20 A 15 15 0 0 0 -10 20 Q -10 40 20 60 Q 50 40 50 20 Z" />
-      </g>
-      <g fill="#fecaca" transform="scale(0.5) translate(250, 40) rotate(20)">
-        <path d="M 50 20 A 15 15 0 0 0 20 20 A 15 15 0 0 0 -10 20 Q -10 40 20 60 Q 50 40 50 20 Z" />
-      </g>
-      <g fill="#f87171" transform="scale(0.4) translate(100, 250) rotate(-15)">
-        <path d="M 50 20 A 15 15 0 0 0 20 20 A 15 15 0 0 0 -10 20 Q -10 40 20 60 Q 50 40 50 20 Z" />
+      <g className="val-anim-heart" filter="url(#clay-3d-val)">
+        <g fill="#fecaca" transform="scale(0.8) translate(30, 20)">
+          <path d="M 50 20 A 15 15 0 0 0 20 20 A 15 15 0 0 0 -10 20 Q -10 40 20 60 Q 50 40 50 20 Z" />
+        </g>
+        <g fill="#fecaca" transform="scale(0.5) translate(250, 40) rotate(20)">
+          <path d="M 50 20 A 15 15 0 0 0 20 20 A 15 15 0 0 0 -10 20 Q -10 40 20 60 Q 50 40 50 20 Z" />
+        </g>
+        <g fill="#f87171" transform="scale(0.4) translate(100, 250) rotate(-15)">
+          <path d="M 50 20 A 15 15 0 0 0 20 20 A 15 15 0 0 0 -10 20 Q -10 40 20 60 Q 50 40 50 20 Z" />
+        </g>
       </g>
 
       {/* Dudu (Brown Bear) */}
-      <g transform="translate(85, 45) scale(0.9) rotate(-5)">
-        <BearFace color="#d4a373" ears="#a98467" eyeType="open" blush={true} />
-        {/* Holding a rose */}
-        <path d="M 30 55 Q 10 70 -5 90" fill="none" stroke="#22c55e" strokeWidth="2" />
-        <circle cx="-5" cy="90" r="4" fill="#ef4444" />
-        <circle cx="-2" cy="88" r="3" fill="#ef4444" />
-        <circle cx="-8" cy="88" r="3" fill="#ef4444" />
+      <g className="val-anim-float-dudu">
+        <g transform="translate(85, 45) scale(0.9) rotate(-5)" filter="url(#clay-3d-val)">
+          <BearFace color="#d4a373" ears="#a98467" eyeType="open" blush={true} />
+          {/* Holding a rose */}
+          <path d="M 30 55 Q 10 70 -5 90" fill="none" stroke="#22c55e" strokeWidth="2.5" />
+          <circle cx="-5" cy="90" r="4.5" fill="#ef4444" />
+          <circle cx="-2" cy="88" r="3.5" fill="#ef4444" />
+          <circle cx="-8" cy="88" r="3.5" fill="#ef4444" />
+        </g>
       </g>
 
       {/* Bubu (White Bear) */}
-      <g transform="translate(25, 45) scale(0.9) rotate(5)">
-        <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="closed" blush={true} />
-        {/* Big blush */}
-        <ellipse cx="25" cy="55" rx="10" ry="5" fill="#fca5a5" opacity="0.9" />
-        <ellipse cx="75" cy="55" rx="10" ry="5" fill="#fca5a5" opacity="0.9" />
+      <g className="val-anim-float-bubu">
+        <g transform="translate(25, 45) scale(0.9) rotate(5)" filter="url(#clay-3d-val)">
+          <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="closed" blush={true} />
+          {/* Big blush */}
+          <ellipse cx="25" cy="55" rx="10" ry="5" fill="#fca5a5" opacity="0.9" />
+          <ellipse cx="75" cy="55" rx="10" ry="5" fill="#fca5a5" opacity="0.9" />
+        </g>
       </g>
       
       {/* Box of chocolates */}
-      <g transform="translate(70, 110) scale(0.8)">
-        <polygon points="0,0 40,-10 60,0 20,10" fill="#f43f5e" />
-        <polygon points="20,10 60,0 60,10 20,20" fill="#e11d48" />
-        <polygon points="0,0 20,10 20,20 0,10" fill="#be123c" />
-        <path d="M 20 -5 L 40 5 M 10 0 L 30 10 M 30 -5 L 50 5" stroke="#fecdd3" strokeWidth="1.5" />
+      <g className="val-anim-float-dudu">
+        <g transform="translate(70, 110) scale(0.8)" filter="url(#clay-3d-val)">
+          <polygon points="0,0 40,-10 60,0 20,10" fill="#f43f5e" />
+          <polygon points="20,10 60,0 60,10 20,20" fill="#e11d48" />
+          <polygon points="0,0 20,10 20,20 0,10" fill="#be123c" />
+          <path d="M 20 -5 L 40 5 M 10 0 L 30 10 M 30 -5 L 50 5" stroke="#fecdd3" strokeWidth="2" />
+        </g>
       </g>
 
       {/* Big heart in center top */}
-      <g fill="#ef4444" transform="translate(75, 5) scale(0.6)">
-        <path d="M 50 20 A 15 15 0 0 0 20 20 A 15 15 0 0 0 -10 20 Q -10 40 20 60 Q 50 40 50 20 Z" />
-        <path d="M 20 25 Q 30 15 45 30" fill="none" stroke="#fca5a5" strokeWidth="2" strokeLinecap="round" />
+      <g className="val-anim-heart">
+        <g fill="#ef4444" transform="translate(75, 5) scale(0.6)" filter="url(#clay-3d-val)">
+          <path d="M 50 20 A 15 15 0 0 0 20 20 A 15 15 0 0 0 -10 20 Q -10 40 20 60 Q 50 40 50 20 Z" />
+          <path d="M 20 25 Q 30 15 45 30" fill="none" stroke="#fca5a5" strokeWidth="3" strokeLinecap="round" />
+        </g>
       </g>
     </svg>
 );
 
 export const BubuDuduSleepy = () => (
-    <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-md pb-4">
-      <path d="M 40 20 L 42 26 L 48 26 L 43 30 L 45 36 L 40 32 L 35 36 L 37 30 L 32 26 L 38 26 Z" fill="#fde047" />
-      <path d="M 160 30 L 161 33 L 164 33 L 162 35 L 163 38 L 160 36 L 157 38 L 158 35 L 156 33 L 159 33 Z" fill="#fde047" opacity="0.7"/>
-      <path d="M 100 15 L 101 17 L 103 17 L 101.5 18.5 L 102 20.5 L 100 19 L 98 20.5 L 98.5 18.5 L 97 17 L 99 17 Z" fill="#fde047" opacity="0.5"/>
+    <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-2xl pb-4 overflow-visible">
+      <defs>
+        <filter id="clay-3d-sleep" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="1" dy="4" stdDeviation="3" floodColor="#000" floodOpacity="0.15" result="shadow"/>
+          <feComponentTransfer in="SourceAlpha" result="alpha"/>
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feOffset dx="-2.5" dy="-2.5" result="offsetBlur"/>
+          <feComposite in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff"/>
+          <feFlood floodColor="white" floodOpacity="0.75"/>
+          <feComposite in2="shadowDiff" operator="in"/>
+          <feComposite in2="SourceGraphic" operator="over" result="highlight"/>
+          <feOffset in="blur" dx="2.5" dy="2.5" result="offsetBlur2"/>
+          <feComposite in="offsetBlur2" in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff2"/>
+          <feFlood floodColor="black" floodOpacity="0.1"/>
+          <feComposite in2="shadowDiff2" operator="in"/>
+          <feComposite in2="highlight" operator="over"/>
+        </filter>
+        <filter id="glow-sleep">
+          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      <style>{`
+        .sleep-anim-sleep-breathe { animation: sleep-breathe 4s ease-in-out infinite; transform-origin: center; }
+        .sleep-anim-zzz { animation: sleep-float-zzz 3s ease-in-out infinite; opacity: 0; }
+        .sleep-anim-zzz-delay { animation: sleep-float-zzz 3s ease-in-out infinite 1.5s; opacity: 0; }
+        @keyframes sleep-breathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.03) translateY(-2px); } }
+        @keyframes sleep-float-zzz { 0% { transform: translateY(0) scale(0.8); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateY(-20px) scale(1.2); opacity: 0; } }
+      `}</style>
+
+      <g filter="url(#glow-sleep)">
+        <path d="M 40 20 L 42 26 L 48 26 L 43 30 L 45 36 L 40 32 L 35 36 L 37 30 L 32 26 L 38 26 Z" fill="#fde047" />
+        <path d="M 160 30 L 161 33 L 164 33 L 162 35 L 163 38 L 160 36 L 157 38 L 158 35 L 156 33 L 159 33 Z" fill="#fde047" opacity="0.8"/>
+        <path d="M 100 15 L 101 17 L 103 17 L 101.5 18.5 L 102 20.5 L 100 19 L 98 20.5 L 98.5 18.5 L 97 17 L 99 17 Z" fill="#fde047" opacity="0.6"/>
+      </g>
 
       {/* Zzz */}
-      <text x="50" y="30" fontSize="12" fill="#94a3b8" fontFamily="sans-serif">Z</text>
-      <text x="60" y="20" fontSize="16" fill="#94a3b8" fontFamily="sans-serif">z</text>
+      <text x="50" y="30" fontSize="14" fill="#94a3b8" fontFamily="sans-serif" className="sleep-anim-zzz" fontWeight="bold">Z</text>
+      <text x="65" y="15" fontSize="18" fill="#94a3b8" fontFamily="sans-serif" className="sleep-anim-zzz-delay" fontWeight="bold">z</text>
 
       {/* Bubu (White Bear) */}
-      <g transform="translate(30, 50) scale(0.85) rotate(-5)">
-        <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="sleepy" blush={true} />
+      <g className="sleep-anim-sleep-breathe">
+        <g transform="translate(30, 50) scale(0.85) rotate(-5)" filter="url(#clay-3d-sleep)">
+          <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="sleepy" blush={true} />
+        </g>
       </g>
 
       {/* Dudu (Brown Bear) behind */}
-      <g transform="translate(80, 55) scale(0.85) rotate(5)">
-        <BearFace color="#d4a373" ears="#a98467" eyeType="sleepy" blush={true} />
+      <g className="sleep-anim-sleep-breathe" style={{ animationDelay: '1s' }}>
+        <g transform="translate(80, 55) scale(0.85) rotate(5)" filter="url(#clay-3d-sleep)">
+          <BearFace color="#d4a373" ears="#a98467" eyeType="sleepy" blush={true} />
+        </g>
       </g>
       
       {/* Blanket */}
-      <path d="M 10 100 Q 100 80 190 100 L 180 130 L 20 130 Z" fill="#818cf8" />
-      <path d="M 10 100 Q 100 80 190 100 L 190 105 Q 100 85 10 105 Z" fill="#a5b4fc" />
+      <g className="sleep-anim-sleep-breathe" filter="url(#clay-3d-sleep)">
+        <path d="M 10 100 Q 100 80 190 100 L 180 130 L 20 130 Z" fill="#818cf8" />
+        <path d="M 10 100 Q 100 80 190 100 L 190 105 Q 100 85 10 105 Z" fill="#a5b4fc" />
+      </g>
     </svg>
 );
 
 export const BubuDuduNewYear = () => (
-    <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-lg pb-4">
+    <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-2xl pb-4 overflow-visible">
+      <defs>
+        <filter id="clay-3d-ny" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="1" dy="4" stdDeviation="3" floodColor="#000" floodOpacity="0.15" result="shadow"/>
+          <feComponentTransfer in="SourceAlpha" result="alpha"/>
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feOffset dx="-2.5" dy="-2.5" result="offsetBlur"/>
+          <feComposite in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff"/>
+          <feFlood floodColor="white" floodOpacity="0.75"/>
+          <feComposite in2="shadowDiff" operator="in"/>
+          <feComposite in2="SourceGraphic" operator="over" result="highlight"/>
+          <feOffset in="blur" dx="2.5" dy="2.5" result="offsetBlur2"/>
+          <feComposite in="offsetBlur2" in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff2"/>
+          <feFlood floodColor="black" floodOpacity="0.1"/>
+          <feComposite in2="shadowDiff2" operator="in"/>
+          <feComposite in2="highlight" operator="over"/>
+        </filter>
+        <filter id="glow-ny">
+          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      <style>{`
+        .ny-anim-float-bubu { animation: ny-float-bear 3s ease-in-out infinite; transform-origin: 50px 50px; }
+        .ny-anim-float-dudu { animation: ny-float-bear 3s ease-in-out infinite 1.5s; transform-origin: 50px 50px; }
+        .ny-anim-firework { animation: ny-pop-firework 2s ease-out infinite; transform-origin: center; }
+        .ny-anim-firework-delay { animation: ny-pop-firework 2s ease-out infinite 1s; transform-origin: center; }
+        @keyframes ny-float-bear { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-4px) rotate(2deg); } }
+        @keyframes ny-pop-firework { 0% { transform: scale(0); opacity: 1; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1.3); opacity: 0; } }
+      `}</style>
+
       {/* Fireworks */}
-      <g transform="translate(30, 30)">
-        <path d="M 0 0 L 0 -15 M 0 0 L 10 -10 M 0 0 L 15 0 M 0 0 L 10 10 M 0 0 L 0 15 M 0 0 L -10 10 M 0 0 L -15 0 M 0 0 L -10 -10" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" />
-        <circle cx="0" cy="-18" r="1.5" fill="#fcd34d" />
-        <circle cx="12" cy="-12" r="1.5" fill="#fcd34d" />
-        <circle cx="-12" cy="-12" r="1.5" fill="#fcd34d" />
+      <g className="ny-anim-firework" filter="url(#glow-ny)">
+        <g transform="translate(30, 30)">
+          <path d="M 0 0 L 0 -15 M 0 0 L 10 -10 M 0 0 L 15 0 M 0 0 L 10 10 M 0 0 L 0 15 M 0 0 L -10 10 M 0 0 L -15 0 M 0 0 L -10 -10" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" />
+          <circle cx="0" cy="-18" r="2.5" fill="#fcd34d" />
+          <circle cx="12" cy="-12" r="2.5" fill="#fcd34d" />
+          <circle cx="-12" cy="-12" r="2.5" fill="#fcd34d" />
+        </g>
       </g>
-      <g transform="translate(170, 40) scale(0.8)">
-        <path d="M 0 0 L 0 -15 M 0 0 L 10 -10 M 0 0 L 15 0 M 0 0 L 10 10 M 0 0 L 0 15 M 0 0 L -10 10 M 0 0 L -15 0 M 0 0 L -10 -10" stroke="#10b981" strokeWidth="1.5" strokeLinecap="round" />
-        <circle cx="0" cy="-18" r="1.5" fill="#34d399" />
-        <circle cx="12" cy="-12" r="1.5" fill="#34d399" />
+      <g className="ny-anim-firework-delay" filter="url(#glow-ny)">
+        <g transform="translate(170, 40) scale(0.8)">
+          <path d="M 0 0 L 0 -15 M 0 0 L 10 -10 M 0 0 L 15 0 M 0 0 L 10 10 M 0 0 L 0 15 M 0 0 L -10 10 M 0 0 L -15 0 M 0 0 L -10 -10" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" />
+          <circle cx="0" cy="-18" r="2.5" fill="#34d399" />
+          <circle cx="12" cy="-12" r="2.5" fill="#34d399" />
+        </g>
       </g>
 
       {/* Dudu (Brown Bear) */}
-      <g transform="translate(90, 50) scale(0.9)">
-        <BearFace color="#d4a373" ears="#a98467" eyeType="open" blush={true} />
-        <text x="35" y="65" fontSize="18" fontWeight="bold" fill="#f59e0b" style={{fontFamily: 'sans-serif'}} transform="rotate(-15 35 65)">2</text>
-        <text x="50" y="60" fontSize="18" fontWeight="bold" fill="#f59e0b" style={{fontFamily: 'sans-serif'}} transform="rotate(-15 50 60)">0</text>
+      <g className="ny-anim-float-dudu">
+        <g transform="translate(90, 50) scale(0.9)" filter="url(#clay-3d-ny)">
+          <BearFace color="#d4a373" ears="#a98467" eyeType="open" blush={true} />
+          <text x="35" y="65" fontSize="22" fontWeight="black" fill="#f59e0b" style={{fontFamily: 'sans-serif'}} transform="rotate(-15 35 65)">2</text>
+          <text x="50" y="60" fontSize="22" fontWeight="black" fill="#f59e0b" style={{fontFamily: 'sans-serif'}} transform="rotate(-15 50 60)">0</text>
+        </g>
       </g>
 
       {/* Bubu (White Bear) */}
-      <g transform="translate(20, 50) scale(0.9)">
-        <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="open" blush={true} />
-        <text x="35" y="60" fontSize="18" fontWeight="bold" fill="#f59e0b" style={{fontFamily: 'sans-serif'}} transform="rotate(15 35 60)">2</text>
-        <text x="50" y="65" fontSize="18" fontWeight="bold" fill="#f59e0b" style={{fontFamily: 'sans-serif'}} transform="rotate(15 50 65)">4</text>
+      <g className="ny-anim-float-bubu">
+        <g transform="translate(20, 50) scale(0.9)" filter="url(#clay-3d-ny)">
+          <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="open" blush={true} />
+          <text x="35" y="60" fontSize="22" fontWeight="black" fill="#f59e0b" style={{fontFamily: 'sans-serif'}} transform="rotate(15 35 60)">2</text>
+          <text x="50" y="65" fontSize="22" fontWeight="black" fill="#f59e0b" style={{fontFamily: 'sans-serif'}} transform="rotate(15 50 65)">4</text>
+        </g>
       </g>
       
       {/* Banner */}
-      <path d="M 20 120 Q 100 135 180 120" fill="none" stroke="#ef4444" strokeWidth="15" strokeLinecap="round" />
-      <text x="100" y="130" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="bold" style={{fontFamily: 'sans-serif'}}>HAPPY NEW YEAR</text>
+      <g filter="url(#clay-3d-ny)">
+        <path d="M 20 120 Q 100 135 180 120" fill="none" stroke="#ef4444" strokeWidth="18" strokeLinecap="round" />
+        <text x="100" y="130" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="900" style={{fontFamily: 'sans-serif'}}>HAPPY NEW YEAR</text>
+      </g>
     </svg>
 );
 
 export const BubuDuduChristmas = () => (
-    <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-lg pb-4">
+    <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-2xl pb-4 overflow-visible">
+      <defs>
+        <filter id="clay-3d-xmas" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="1" dy="4" stdDeviation="3" floodColor="#000" floodOpacity="0.15" result="shadow"/>
+          <feComponentTransfer in="SourceAlpha" result="alpha"/>
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feOffset dx="-2.5" dy="-2.5" result="offsetBlur"/>
+          <feComposite in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff"/>
+          <feFlood floodColor="white" floodOpacity="0.75"/>
+          <feComposite in2="shadowDiff" operator="in"/>
+          <feComposite in2="SourceGraphic" operator="over" result="highlight"/>
+          <feOffset in="blur" dx="2.5" dy="2.5" result="offsetBlur2"/>
+          <feComposite in="offsetBlur2" in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff2"/>
+          <feFlood floodColor="black" floodOpacity="0.1"/>
+          <feComposite in2="shadowDiff2" operator="in"/>
+          <feComposite in2="highlight" operator="over"/>
+        </filter>
+        <filter id="glow-xmas">
+          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      <style>{`
+        .xmas-anim-float-bubu { animation: xmas-float-bear 3s ease-in-out infinite; transform-origin: 50px 50px; }
+        .xmas-anim-float-dudu { animation: xmas-float-bear 3s ease-in-out infinite 1.5s; transform-origin: 50px 50px; }
+        .xmas-anim-snow { animation: xmas-fall-snow 4s linear infinite; }
+        @keyframes xmas-float-bear { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-4px) rotate(2deg); } }
+        @keyframes xmas-fall-snow { 0% { transform: translateY(-20px); opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { transform: translateY(40px); opacity: 0; } }
+      `}</style>
+
       {/* Snow */}
-      <circle cx="20" cy="20" r="1.5" fill="#fff" />
-      <circle cx="80" cy="30" r="2" fill="#fff" />
-      <circle cx="150" cy="15" r="1.5" fill="#fff" />
-      <circle cx="180" cy="40" r="2" fill="#fff" />
+      <g className="xmas-anim-snow" filter="url(#glow-xmas)">
+        <circle cx="20" cy="20" r="2" fill="#fff" />
+        <circle cx="80" cy="30" r="2.5" fill="#fff" />
+        <circle cx="150" cy="15" r="2" fill="#fff" />
+        <circle cx="180" cy="40" r="2.5" fill="#fff" />
+      </g>
       
       {/* Christmas Tree */}
-      <g transform="translate(130, 40) scale(0.8)">
+      <g transform="translate(130, 40) scale(0.8)" filter="url(#clay-3d-xmas)">
         <polygon points="30,0 10,30 20,30 0,60 60,60 40,30 50,30" fill="#10b981" />
         <rect x="25" y="60" width="10" height="15" fill="#78350f" />
         {/* Ornaments */}
-        <circle cx="30" cy="20" r="3" fill="#ef4444" />
-        <circle cx="20" cy="40" r="3" fill="#fcd34d" />
-        <circle cx="45" cy="45" r="3" fill="#ef4444" />
+        <circle cx="30" cy="20" r="3.5" fill="#ef4444" />
+        <circle cx="20" cy="40" r="3.5" fill="#fcd34d" />
+        <circle cx="45" cy="45" r="3.5" fill="#ef4444" />
         {/* Star */}
         <polygon points="30,-5 33,2 40,2 35,7 37,14 30,10 23,14 25,7 20,2 27,2" fill="#fbbf24" />
       </g>
 
       {/* Dudu (Brown Bear) */}
-      <g transform="translate(60, 50) scale(0.9)">
-        <BearFace color="#d4a373" ears="#a98467" eyeType="open" blush={true} />
-        {/* Santa Hat */}
-        <path d="M 25 15 L 65 15 L 45 -10 Z" fill="#ef4444" />
-        <circle cx="45" cy="-10" r="6" fill="#fff" />
-        <rect x="20" y="10" width="50" height="8" fill="#fff" rx="4" />
+      <g className="xmas-anim-float-dudu">
+        <g transform="translate(60, 50) scale(0.9)" filter="url(#clay-3d-xmas)">
+          <BearFace color="#d4a373" ears="#a98467" eyeType="open" blush={true} />
+          {/* Santa Hat */}
+          <path d="M 25 15 L 65 15 L 45 -10 Z" fill="#ef4444" />
+          <circle cx="45" cy="-10" r="7" fill="#fff" />
+          <rect x="20" y="10" width="50" height="10" fill="#fff" rx="5" />
+        </g>
       </g>
 
       {/* Bubu (White Bear) */}
-      <g transform="translate(10, 50) scale(0.9)">
-        <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="closed" blush={true} />
-        {/* Elf Hat */}
-        <path d="M 30 18 L 60 18 L 45 -15 Q 60 -5 70 5" fill="none" stroke="#22c55e" strokeWidth="8" strokeLinecap="round" />
-        <polygon points="25,18 65,18 45,-15" fill="#22c55e" />
-        <circle cx="70" cy="5" r="4" fill="#fcd34d" />
+      <g className="xmas-anim-float-bubu">
+        <g transform="translate(10, 50) scale(0.9)" filter="url(#clay-3d-xmas)">
+          <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="closed" blush={true} />
+          {/* Elf Hat */}
+          <path d="M 30 18 L 60 18 L 45 -15 Q 60 -5 70 5" fill="none" stroke="#22c55e" strokeWidth="10" strokeLinecap="round" />
+          <polygon points="25,18 65,18 45,-15" fill="#22c55e" />
+          <circle cx="70" cy="5" r="5" fill="#fcd34d" />
+        </g>
       </g>
       
       {/* Presents */}
-      <g transform="translate(90, 110) scale(0.6)">
-        <rect x="0" y="0" width="40" height="40" fill="#ef4444" />
+      <g transform="translate(90, 110) scale(0.6)" filter="url(#clay-3d-xmas)">
+        <rect x="0" y="0" width="40" height="40" fill="#ef4444" rx="2" />
         <rect x="15" y="0" width="10" height="40" fill="#fde047" />
         <rect x="0" y="15" width="40" height="10" fill="#fde047" />
         {/* Bow */}
@@ -379,7 +635,7 @@ export const ThemeIcon = ({ theme }: { theme: ThemeType }) => {
 }
 
 export const PhotoCake = () => (
-    <svg viewBox="0 0 200 150" className="w-full h-full rounded-lg overflow-hidden bg-gradient-to-br from-yellow-50 to-orange-100 shadow-inner">
+    <svg viewBox="0 0 200 150" className="w-full h-full rounded-lg overflow-hidden bg-linear-to-br from-yellow-50 to-orange-100 shadow-inner">
       <g transform="translate(90, 40) scale(0.9)">
         <BearFace color="#d4a373" ears="#a98467" eyeType="open" blush={true} />
       </g>
@@ -397,7 +653,7 @@ export const PhotoCake = () => (
 );
 
 export const PhotoHug = () => (
-    <svg viewBox="0 0 200 150" className="w-full h-full rounded-lg overflow-hidden bg-gradient-to-br from-pink-50 to-rose-100 shadow-inner">
+    <svg viewBox="0 0 200 150" className="w-full h-full rounded-lg overflow-hidden bg-linear-to-br from-pink-50 to-rose-100 shadow-inner">
       <g transform="translate(60, 45) scale(1) rotate(15)">
         <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="closed" blush={true} />
       </g>
@@ -409,7 +665,7 @@ export const PhotoHug = () => (
 );
 
 export const PhotoStargazing = () => (
-    <svg viewBox="0 0 200 150" className="w-full h-full rounded-lg overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-200 shadow-inner">
+    <svg viewBox="0 0 200 150" className="w-full h-full rounded-lg overflow-hidden bg-linear-to-br from-indigo-100 to-purple-200 shadow-inner">
       <circle cx="40" cy="30" r="4" fill="#fde047" />
       <circle cx="160" cy="50" r="3" fill="#fde047" />
       <circle cx="80" cy="20" r="2" fill="#fde047" />

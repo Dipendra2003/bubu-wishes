@@ -115,7 +115,7 @@ function PuzzleOne({ onSolve, language, pageIndex = 1 }: { onSolve: () => void; 
 
       <div className="w-full bg-white/60 h-4 rounded-full mb-6 sm:mb-8 overflow-hidden border border-white/50 shadow-inner">
         <div 
-          className="bg-gradient-to-r from-pink-400 to-yellow-400 h-full transition-all duration-700 ease-out" 
+          className="bg-linear-to-r from-pink-400 to-yellow-400 h-full transition-all duration-700 ease-out" 
           style={{ width: `${Math.min(100, (collected / 3) * 100)}%` }}
         />
       </div>
@@ -124,9 +124,9 @@ function PuzzleOne({ onSolve, language, pageIndex = 1 }: { onSolve: () => void; 
         onClick={onSolve}
         disabled={collected < 3}
         className={cn(
-          "px-6 sm:px-8 py-3 rounded-full font-bold shadow-lg transition-all duration-300 w-full max-w-[200px]",
+          "px-6 sm:px-8 py-3 rounded-full font-bold shadow-lg transition-all duration-300 w-full max-w-50",
           collected >= 3 
-            ? "bg-gradient-to-r from-pink-400 to-pink-500 text-white hover:shadow-xl hover:scale-105" 
+            ? "bg-linear-to-r from-pink-400 to-pink-500 text-white hover:shadow-xl hover:scale-105" 
             : "bg-white/50 text-gray-400 cursor-not-allowed border border-white/30"
         )}
       >
@@ -254,7 +254,7 @@ function PuzzleTwo({ data, onSolve, language, pageIndex = 1 }: { data?: CardData
           initial={{ width: '100%' }}
           animate={{ width: `${(timeLeft / 30) * 100}%` }}
           transition={{ duration: 1, ease: 'linear' }}
-          className="h-full bg-gradient-to-r from-pink-400 to-pink-500"
+          className="h-full bg-linear-to-r from-pink-400 to-pink-500"
         />
       </div>
       
@@ -270,7 +270,7 @@ function PuzzleTwo({ data, onSolve, language, pageIndex = 1 }: { data?: CardData
       <h3 className="text-2xl sm:text-3xl font-handwriting font-bold text-pink-600 mb-2">
         {language === 'hinglish' ? `Page ${pageIndex}: Ek Paheli` : `Page ${pageIndex}: A Sweet Riddle`}
       </h3>
-      <div className="min-h-[80px] flex items-center justify-center mb-4">
+      <div className="min-h-20 flex items-center justify-center mb-4">
         <p className="text-gray-600 text-sm sm:text-base font-medium leading-relaxed">
           {language === 'hinglish' ? currentRiddle.hi : currentRiddle.en}
         </p>
@@ -343,7 +343,7 @@ function PuzzleTwo({ data, onSolve, language, pageIndex = 1 }: { data?: CardData
               />
               <button
                 onClick={checkAnswer}
-                className="px-6 sm:px-8 py-3 bg-gradient-to-r from-pink-400 to-pink-500 text-white rounded-full font-bold shadow-lg shadow-pink-200/50 hover:shadow-xl hover:scale-105 transition-all w-full max-w-[200px] mx-auto block mt-auto"
+                className="px-6 sm:px-8 py-3 bg-linear-to-r from-pink-400 to-pink-500 text-white rounded-full font-bold shadow-lg shadow-pink-200/50 hover:shadow-xl hover:scale-105 transition-all w-full max-w-50 mx-auto block mt-auto"
               >
                 {language === 'hinglish' ? 'Kholo 🔓' : 'Unlock 🔓'}
               </button>
@@ -394,7 +394,7 @@ function PuzzleThree({ onSolve, language, pageIndex = 1 }: { onSolve: () => void
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
           onMouseEnter={handleHover}
           onClick={onSolve}
-          className="absolute px-8 py-4 bg-gradient-to-r from-blue-400 to-purple-400 text-white rounded-full font-bold shadow-xl hover:shadow-2xl z-20 whitespace-nowrap"
+          className="absolute px-8 py-4 bg-linear-to-r from-blue-400 to-purple-400 text-white rounded-full font-bold shadow-xl hover:shadow-2xl z-20 whitespace-nowrap"
         >
           {dodgeCount < 3 
             ? (language === 'hinglish' ? "Pakad ke dikhao! 🏃💨" : "Click Me! 🏃💨") 
@@ -468,7 +468,7 @@ function MathPuzzle({ onSolve, language, pageIndex = 1 }: { onSolve: () => void;
       />
       <button
         onClick={checkAnswer}
-        className="px-6 sm:px-8 py-3 bg-gradient-to-r from-pink-400 to-pink-500 text-white rounded-full font-bold shadow-lg shadow-pink-200/50 hover:shadow-xl hover:scale-105 transition-all w-full max-w-[200px] mx-auto block mt-auto"
+        className="px-6 sm:px-8 py-3 bg-linear-to-r from-pink-400 to-pink-500 text-white rounded-full font-bold shadow-lg shadow-pink-200/50 hover:shadow-xl hover:scale-105 transition-all w-full max-w-50 mx-auto block mt-auto"
       >
         {language === 'hinglish' ? 'Solve 🔓' : 'Solve 🔓'}
       </button>
@@ -546,7 +546,7 @@ function MemoryPuzzle({ onSolve, language, pageIndex = 1 }: { onSolve: () => voi
             whileTap={{ scale: 0.95 }}
             className={cn(
               "aspect-[3/4] flex items-center justify-center text-4xl sm:text-5xl rounded-xl transition-all duration-300 transform-style-3d",
-              card.flipped ? "bg-white shadow-inner" : "bg-gradient-to-br from-pink-400 to-pink-500 shadow-md",
+              card.flipped ? "bg-white shadow-inner" : "bg-linear-to-br from-pink-400 to-pink-500 shadow-md",
               card.matched && "opacity-50 grayscale"
             )}
             style={{ rotateY: card.flipped ? '180deg' : '0deg' }}

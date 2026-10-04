@@ -14,8 +14,8 @@ export default function Navbar() {
     setIsMobileMenuOpen(false);
   }, [location]);
 
-  if (['/', '/login', '/signup', '/about', '/privacy', '/terms', '/contact', '/faq'].includes(location.pathname)) {
-    return null; // Landing/auth/static pages have custom headers
+  if (['/', '/login', '/signup', '/about', '/privacy', '/terms', '/contact', '/faq', '/card'].includes(location.pathname)) {
+    return null; // Landing/auth/static/card pages have custom headers or full-screen view
   }
 
   const handleLogout = () => {
@@ -34,7 +34,7 @@ export default function Navbar() {
                 <div className="bg-pink-500 rounded-full p-1.5 flex items-center justify-center">
                   <MessageCircleHeart className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-pink-600 to-rose-400">
+                <span className="text-xl font-black bg-clip-text text-transparent bg-linear-to-r from-pink-600 to-rose-400">
                   BubuWish
                 </span>
               </Link>

@@ -28,12 +28,8 @@ reviewsRouter.get("/featured", async (req: any, res) => {
 
     res.json(featuredReviews);
   } catch (e) {
-    // If database connection fails, return fallback static reviews to keep the landing page functional
-    res.json([
-      { userName: "Sarah J.", role: "Girlfriend", comment: "I sent the Valentine's theme to my boyfriend with a voice note. He literally cried. The unboxing animation is so satisfying!", rating: "5" },
-      { userName: "Mike T.", role: "Best Friend", comment: "The math puzzle lock is hilarious. I made my friend solve algebra before he could see my birthday message.", rating: "5" },
-      { userName: "Emily W.", role: "Long Distance", comment: "I live across the country from my mom. Being able to send a full 3D interactive card makes it feel so much more special.", rating: "5" }
-    ]);
+    console.error("[Reviews] Error fetching featured reviews:", e);
+    res.status(500).json({ error: "Failed to fetch featured reviews" });
   }
 });
 

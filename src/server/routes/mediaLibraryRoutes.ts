@@ -2,33 +2,60 @@ import express, { Request, Response } from "express";
 import { db } from "../../db/index";
 import { mediaLibrary } from "../../db/schema";
 import { authenticate } from "../middleware/auth";
-import { eq, and, desc } from "drizzle-orm";
+import { validateUUID } from "../middleware/sanitization";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import multer from "multer";
 import { uploadMedia, deleteMedia } from "../services/cloudinaryService";
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 30 * 1024 * 1024 } }); // 30MB max (per-type limits enforced in handler)
 
-// Get all media for authenticated user
+// Get all media for authenticated user with pagination
 router.get("/", authenticate, async (req: Request | any, res: Response) => {
   try {
     const userId = req.user.id;
-    const mediaType = req.query.type; // Optional filter: 'image' or 'audio'
+    const mediaType = req.query.type as string; // Optional filter: 'image' or 'audio' or 'video'
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 30;
+    const search = req.query.search as string;
+    const offset = (page - 1) * limit;
     
-    let query = db
+    let conditions = [eq(mediaLibrary.userId, userId)];
+    if (mediaType && mediaType !== 'all') {
+      conditions.push(eq(mediaLibrary.mediaType, mediaType));
+    }
+    if (search) {
+      conditions.push(sql`lower(${mediaLibrary.fileName}) LIKE lower(${'%' + search + '%'})`);
+    }
+    
+    const media = await db
       .select()
       .from(mediaLibrary)
-      .where(eq(mediaLibrary.userId, userId))
-      .orderBy(desc(mediaLibrary.createdAt));
+      .where(and(...conditions))
+      .orderBy(desc(mediaLibrary.createdAt))
+      .limit(limit)
+      .offset(offset);
+      
+    // Get total count
+    const countResult = await db
+      .select({ count: sql<number>`cast(count(${mediaLibrary.id}) as integer)` })
+      .from(mediaLibrary)
+      .where(and(...conditions));
+      
+    const totalCount = countResult[0]?.count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
     
-    const media = await query;
-    
-    // Filter by type if specified
-    const filteredMedia = mediaType 
-      ? media.filter(m => m.mediaType === mediaType)
-      : media;
-    
-    res.json({ success: true, media: filteredMedia });
+    res.json({ 
+      success: true, 
+      media,
+      pagination: {
+        total: totalCount,
+        page,
+        limit,
+        totalPages,
+        hasMore: page < totalPages
+      }
+    });
   } catch (error: any) {
     console.error("Error fetching media library:", error);
     res.status(500).json({ error: "Failed to fetch media library" });
@@ -109,6 +136,9 @@ router.patch("/:id", authenticate, async (req: Request | any, res: Response) => 
   try {
     const userId = req.user.id;
     const mediaId = req.params.id;
+    if (!validateUUID(mediaId)) {
+      return res.status(400).json({ error: "Invalid media ID format" });
+    }
     const { fileName } = req.body;
     
     // Check ownership
@@ -143,6 +173,9 @@ router.post("/:id/use", authenticate, async (req: Request | any, res: Response) 
   try {
     const userId = req.user.id;
     const mediaId = req.params.id;
+    if (!validateUUID(mediaId)) {
+      return res.status(400).json({ error: "Invalid media ID format" });
+    }
     
     // Check ownership
     const media = await db
@@ -179,6 +212,9 @@ router.delete("/:id", authenticate, async (req: Request | any, res: Response) =>
   try {
     const userId = req.user.id;
     const mediaId = req.params.id;
+    if (!validateUUID(mediaId)) {
+      return res.status(400).json({ error: "Invalid media ID format" });
+    }
     
     // Check ownership
     const media = await db
@@ -211,11 +247,72 @@ router.delete("/:id", authenticate, async (req: Request | any, res: Response) =>
   }
 });
 
+// Bulk Delete media from library
+router.post("/bulk-delete", authenticate, async (req: Request | any, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const { mediaIds } = req.body;
+    
+    if (!Array.isArray(mediaIds) || mediaIds.length === 0) {
+      return res.status(400).json({ error: "No media IDs provided" });
+    }
+    
+    // Validate UUIDs
+    for (const id of mediaIds) {
+      if (!validateUUID(id)) {
+        return res.status(400).json({ error: `Invalid media ID format: ${id}` });
+      }
+    }
+    
+    // Get all media items to check ownership and get publicIds
+    const mediaItems = await db
+      .select()
+      .from(mediaLibrary)
+      .where(and(
+        inArray(mediaLibrary.id, mediaIds), 
+        eq(mediaLibrary.userId, userId)
+      ));
+      
+    if (mediaItems.length === 0) {
+      return res.status(404).json({ error: "No authorized media found to delete" });
+    }
+    
+    // Delete from Cloudinary
+    let cloudinaryFailures = 0;
+    for (const item of mediaItems) {
+      if (item.publicId) {
+        try {
+          await deleteMedia(item.publicId);
+        } catch (cloudError) {
+          console.warn(`Failed to delete ${item.publicId} from Cloudinary:`, cloudError);
+          cloudinaryFailures++;
+        }
+      }
+    }
+    
+    // Delete from database
+    const validIds = mediaItems.map(m => m.id);
+    await db.delete(mediaLibrary).where(inArray(mediaLibrary.id, validIds));
+    
+    res.json({ 
+      success: true, 
+      message: `Deleted ${validIds.length} items`,
+      cloudinaryFailures: cloudinaryFailures > 0 ? cloudinaryFailures : undefined
+    });
+  } catch (error: any) {
+    console.error("Error bulk deleting media:", error);
+    res.status(500).json({ error: "Failed to perform bulk delete" });
+  }
+});
+
 // Get single media item
 router.get("/:id", authenticate, async (req: Request | any, res: Response) => {
   try {
     const userId = req.user.id;
     const mediaId = req.params.id;
+    if (!validateUUID(mediaId)) {
+      return res.status(400).json({ error: "Invalid media ID format" });
+    }
     
     const media = await db
       .select()

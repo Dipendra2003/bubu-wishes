@@ -39,9 +39,16 @@ export function useAuth() {
 }
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const saved = localStorage.getItem('user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!user && !!token);
 
   // Enable automatic token refresh
   useTokenRefresh();
@@ -57,10 +64,15 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .then(data => {
         setUser(data.user);
+        try {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        } catch {}
       })
       .catch(() => {
         setToken(null);
+        setUser(null);
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
       })
       .finally(() => setIsLoading(false));
     } else {
@@ -70,20 +82,29 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = (newToken: string, newUser: User) => {
     localStorage.setItem('token', newToken);
+    try {
+      localStorage.setItem('user', JSON.stringify(newUser));
+    } catch {}
     setToken(newToken);
     setUser(newUser);
   };
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setToken(null);
     setUser(null);
   };
 
   const updateUser = (updates: Partial<User>) => {
-    if (user) {
-      setUser({ ...user, ...updates });
-    }
+    setUser(prev => {
+      if (!prev) return null;
+      const updated = { ...prev, ...updates };
+      try {
+        localStorage.setItem('user', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
   };
 
   return (
@@ -114,7 +135,7 @@ export default function App() {
     <ToastProvider>
       <AuthProvider>
         <BrowserRouter>
-          <div className="min-h-[100dvh] bg-gray-50 font-sans text-gray-900 flex flex-col">
+          <div className="min-h-dvh bg-gray-50 font-sans text-gray-900 flex flex-col">
             <Navbar />
             <main className="flex-1 flex flex-col">
               <Routes>

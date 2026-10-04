@@ -110,7 +110,7 @@ export default function Login() {
       <div className="absolute top-0 w-full p-6">
         <Link to="/" className="flex items-center gap-2">
           <MessageCircleHeart className="w-8 h-8 text-pink-500" />
-          <span className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-pink-600 to-rose-400">BubuWish</span>
+          <span className="text-2xl font-black bg-clip-text text-transparent bg-linear-to-r from-pink-600 to-rose-400">BubuWish</span>
         </Link>
       </div>
 

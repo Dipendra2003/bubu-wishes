@@ -3,13 +3,14 @@ import { db } from "../../db/index";
 import { users, verificationCodes } from "../../db/schema";
 import { eq, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { authenticate } from "../middleware/auth";
+import { authenticate, invalidateUserCache } from "../middleware/auth";
 import { sendEmail, getVerificationEmailHtml, getPasswordResetEmailHtml, getWelcomeEmailHtml } from "../services/emailService";
 import { authLimiter } from "../middleware/rateLimiter";
 import { validatePassword } from "../lib/passwordValidation";
 import { generateTokenPair, refreshAccessToken, revokeRefreshToken, revokeAllUserTokens, getActiveSessions, revokeSession } from "../lib/tokenManager";
 import { logActivity, isNewLoginLocation } from "../lib/activityLogger";
 import { verifyGoogleIdToken } from "../services/oauthService";
+import { validateUUID } from "../middleware/sanitization";
 import crypto from "crypto";
 
 export const authRouter = express.Router();
@@ -312,14 +313,15 @@ authRouter.post("/refresh", async (req: any, res) => {
     const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
     
     if (!refreshToken) {
-      return res.status(403).json({ error: "No refresh token" });
+      return res.status(401).json({ error: "No refresh token provided" });
     }
 
     const tokens = await refreshAccessToken(refreshToken, req);
     
     if (!tokens) {
+      // Verified not to exist or expired in database
       res.clearCookie('refreshToken', { path: '/' });
-      return res.status(403).json({ error: "Invalid or expired refresh token" });
+      return res.status(401).json({ error: "Invalid or expired refresh token" });
     }
 
     res.cookie('refreshToken', tokens.refreshToken, {
@@ -331,10 +333,10 @@ authRouter.post("/refresh", async (req: any, res) => {
     });
 
     res.json({ accessToken: tokens.accessToken });
-  } catch (e) {
-    console.error('Token refresh error:', e);
-    res.clearCookie('refreshToken', { path: '/' });
-    res.status(500).json({ error: "Token refresh failed" });
+  } catch (e: any) {
+    console.error('Token refresh server/database error:', e?.message || e);
+    // DO NOT clear cookie on database/server errors! Allow client to retry on next interval without logging out.
+    res.status(503).json({ error: "Database temporarily busy, please retry token refresh" });
   }
 });
 
@@ -382,6 +384,9 @@ authRouter.get("/sessions", authenticate, async (req: any, res) => {
 authRouter.delete("/sessions/:id", authenticate, async (req: any, res) => {
   try {
     const sessionId = req.params.id;
+    if (!validateUUID(sessionId)) {
+      return res.status(400).json({ error: "Invalid session ID format" });
+    }
     const success = await revokeSession(sessionId, req.user.id);
     
     if (success) {
@@ -397,8 +402,8 @@ authRouter.delete("/sessions/:id", authenticate, async (req: any, res) => {
 });
 
 authRouter.get("/me", authenticate, (req: any, res) => {
-  const { id, name, email, role, verified, avatarUrl, oauthProvider } = req.user;
-  res.json({ user: { id, name, email, role, verified, avatarUrl, oauthProvider } });
+  const { id, name, email, role, verified, avatarUrl, bio, phone, birthday, location, timezone, oauthProvider, createdAt } = req.user;
+  res.json({ user: { id, name, email, role, verified, avatarUrl, bio, phone, birthday, location, timezone, oauthProvider, createdAt } });
 });
 
 authRouter.post("/verify", authenticate, async (req: any, res) => {
@@ -419,6 +424,7 @@ authRouter.post("/verify", authenticate, async (req: any, res) => {
 
   await db.update(users).set({ verified: true }).where(eq(users.id, req.user.id));
   await db.delete(verificationCodes).where(eq(verificationCodes.userId, req.user.id));
+  invalidateUserCache(req.user.id);
   
   await sendEmail(
     req.user.email,
@@ -604,6 +610,7 @@ authRouter.post("/change-password", authenticate, async (req: any, res) => {
       .set({ password: hashedPassword })
       .where(eq(users.id, req.user.id));
 
+    invalidateUserCache(req.user.id);
     await revokeAllUserTokens(req.user.id);
     await logActivity(req.user.id, 'password_change', req);
 

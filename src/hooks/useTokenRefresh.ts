@@ -13,7 +13,7 @@ export function useTokenRefresh() {
       // Don't try to refresh if user is not logged in
       const token = localStorage.getItem('token');
       if (!token) {
-        console.log('⏸️ No token found, skipping refresh');
+
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
           intervalRef.current = null;
@@ -37,38 +37,33 @@ export function useTokenRefresh() {
         if (response.ok) {
           const data = await response.json();
           localStorage.setItem('token', data.accessToken);
-          // Token refreshed successfully
-        } else {
-          // If refresh fails, clear tokens and stop trying
-          console.error('❌ Token refresh failed, clearing tokens...');
+        } else if (response.status === 401 || response.status === 403) {
+          // Token is genuinely invalid, expired, or revoked
+          console.warn('🔒 Refresh token expired or revoked, logging out...');
           localStorage.removeItem('token');
           
-          // Clear the interval to stop further attempts
           if (intervalRef.current) {
             clearInterval(intervalRef.current);
             intervalRef.current = null;
           }
           
-          // Only redirect if we're not already on login/signup pages
           if (!window.location.pathname.match(/\/(login|signup)/)) {
             window.location.href = '/login';
           }
+        } else {
+          // Server error (500, 503) or database sleep - DO NOT LOG OUT!
+          console.warn(`⚠️ Token refresh encountered server status ${response.status}. Will retry on next interval.`);
         }
       } catch (error) {
-        console.error('Token refresh error:', error);
-        // Stop trying on error
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
+        console.warn('⚠️ Network hiccup during token refresh, will retry later:', error);
       }
     };
     
     // Only start refresh if user has a token
     const token = localStorage.getItem('token');
     if (token) {
-      // Refresh after 5 seconds on mount (give app time to load)
-      const timeoutId = setTimeout(refreshAccessToken, 5000);
+      // Refresh after 5 minutes (access token has 15-minute lifespan)
+      const timeoutId = setTimeout(refreshAccessToken, 5 * 60 * 1000);
       
       // Then refresh every 10 minutes (token expires in 15 min)
       intervalRef.current = setInterval(refreshAccessToken, 10 * 60 * 1000);
@@ -80,7 +75,7 @@ export function useTokenRefresh() {
         }
       };
     } else {
-      console.log('⏸️ No initial token, refresh hook inactive');
+
     }
     
     return () => {

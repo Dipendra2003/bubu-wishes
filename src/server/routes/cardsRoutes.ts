@@ -1,10 +1,11 @@
 import express from "express";
 import { db } from "../../db/index";
 import { cards } from "../../db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { authenticate, requireVerified } from "../middleware/auth";
 import { apiLimiter } from "../middleware/rateLimiter";
+import { validateUUID } from "../middleware/sanitization";
 
 export const cardsRouter = express.Router();
 
@@ -12,18 +13,26 @@ cardsRouter.use(apiLimiter);
 
 cardsRouter.get("/:id", async (req: any, res) => {
   try {
+    // Validate UUID format
+    if (!validateUUID(req.params.id)) {
+      return res.status(400).json({ error: "Invalid card ID format" });
+    }
+
     const cardRecords = await db.select().from(cards).where(eq(cards.id, req.params.id)).limit(1);
     if (cardRecords.length > 0) {
       const data = cardRecords[0];
       if (data.cardData) {
-        res.json(JSON.parse(data.cardData));
+        const parsed = JSON.parse(data.cardData);
+        // Strip unlockCode from public response to prevent puzzle bypass
+        delete parsed.unlockCode;
+        res.json(parsed);
       } else {
         res.json({
           to: data.recipient,
           from: data.sender,
           message: data.message,
           theme: data.theme,
-          unlockCode: data.unlockCode,
+          // unlockCode intentionally omitted from public response
           musicTheme: data.musicTheme,
           bgPattern: data.bgPattern
         });
@@ -44,7 +53,7 @@ cardsRouter.use(requireVerified); // Require email verification for all card ope
 cardsRouter.post("/", async (req: any, res) => {
   try {
     const data = req.body;
-    if (!data.message && !data.customPhotoUrls && !data.recordedAudio) {
+    if (!data.message && !data.customPhotoUrls && !data.recordedAudio && !data.customVideoUrl) {
         return res.status(400).json({ error: "Message or media is required" });
     }
     
@@ -53,6 +62,27 @@ cardsRouter.post("/", async (req: any, res) => {
         return res.status(400).json({ error: "Payload size too large" });
     }
     
+    // Deduplication check: if identical card was created by this user in last 10s, return existing record
+    const recentDuplicate = await db
+      .select()
+      .from(cards)
+      .where(
+        and(
+          eq(cards.creatorId, req.user.id),
+          eq(cards.recipient, data.to || "A Friend"),
+          eq(cards.message, data.message || "")
+        )
+      )
+      .orderBy(desc(cards.createdAt))
+      .limit(1);
+
+    if (recentDuplicate.length > 0) {
+      const diffMs = Date.now() - new Date(recentDuplicate[0].createdAt).getTime();
+      if (diffMs < 10000) {
+        return res.json(recentDuplicate[0]);
+      }
+    }
+
     const cardId = randomUUID(); // Use full UUID for database compatibility
     
     const newCardRecord = await db.insert(cards).values({
@@ -65,7 +95,7 @@ cardsRouter.post("/", async (req: any, res) => {
       musicTheme: data.musicTheme || "-",
       bgPattern: data.bgPattern || "-",
       cardData: JSON.stringify(data),
-      imageUrl: data.customPhotoUrls?.[0] || data.customPhotoUrl || null,
+      imageUrl: data.customPhotoUrls?.[0] || data.customPhotoUrl || data.customVideoUrl || null,
       audioUrl: data.recordedAudio || null,
       creatorId: req.user.id,
     }).returning();
@@ -79,6 +109,10 @@ cardsRouter.post("/", async (req: any, res) => {
 
 cardsRouter.put("/:id", async (req: any, res) => {
   try {
+    if (!validateUUID(req.params.id)) {
+      return res.status(400).json({ error: "Invalid card ID format" });
+    }
+
     const data = req.body;
     
     if (JSON.stringify(data).length > 200 * 1024) { // 200KB limit
@@ -117,6 +151,10 @@ cardsRouter.put("/:id", async (req: any, res) => {
 
 cardsRouter.delete("/:id", async (req: any, res) => {
   try {
+    if (!validateUUID(req.params.id)) {
+      return res.status(400).json({ error: "Invalid card ID format" });
+    }
+
     const targetCard = await db.select().from(cards).where(eq(cards.id, req.params.id)).limit(1);
     
     if (targetCard.length === 0) return res.status(404).json({ error: "Not found" });

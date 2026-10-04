@@ -2,15 +2,37 @@ import express from "express";
 import { db } from "../../db/index";
 import { userPreferences, users } from "../../db/schema";
 import { eq } from "drizzle-orm";
-import { authenticate } from "../middleware/auth";
+import { authenticate, invalidateUserCache } from "../middleware/auth";
 
 export const preferencesRouter = express.Router();
+
+// 60-second in-memory preferences cache to avoid cross-region DB round-trips
+const prefsCache = new Map<string, { data: any; expiresAt: number }>();
+
+function getCachedPrefs(userId: string) {
+  const cached = prefsCache.get(userId);
+  if (cached && cached.expiresAt > Date.now()) return cached.data;
+  prefsCache.delete(userId);
+  return null;
+}
+
+function setCachedPrefs(userId: string, data: any) {
+  prefsCache.set(userId, { data, expiresAt: Date.now() + 60_000 });
+}
+
+function invalidatePrefsCache(userId: string) {
+  prefsCache.delete(userId);
+}
 
 preferencesRouter.use(authenticate);
 
 // Get user preferences
 preferencesRouter.get("/", async (req: any, res) => {
   try {
+    // Check cache first
+    const cached = getCachedPrefs(req.user.id);
+    if (cached) return res.json(cached);
+
     const prefs = await db
       .select()
       .from(userPreferences)
@@ -19,15 +41,18 @@ preferencesRouter.get("/", async (req: any, res) => {
 
     if (prefs.length === 0) {
       // Return defaults if no preferences exist
-      return res.json({
+      const defaults = {
         emailReminders: true,
         reminderDays: '1,3,7',
         reminderTime: '08:00',
         birthdayWishEmail: true,
         timezone: req.user.timezone || 'UTC'
-      });
+      };
+      setCachedPrefs(req.user.id, defaults);
+      return res.json(defaults);
     }
 
+    setCachedPrefs(req.user.id, prefs[0]);
     res.json(prefs[0]);
   } catch (error) {
     console.error('Error fetching preferences:', error);
@@ -90,6 +115,7 @@ preferencesRouter.put("/", async (req: any, res) => {
       await db.update(users)
         .set({ timezone })
         .where(eq(users.id, req.user.id));
+      invalidateUserCache(req.user.id);
     }
 
     if (existing.length === 0) {
@@ -105,6 +131,8 @@ preferencesRouter.put("/", async (req: any, res) => {
         })
         .returning();
 
+      invalidatePrefsCache(req.user.id);
+      setCachedPrefs(req.user.id, result[0]);
       return res.json(result[0]);
     } else {
       // Update existing preferences
@@ -113,6 +141,8 @@ preferencesRouter.put("/", async (req: any, res) => {
         .where(eq(userPreferences.userId, req.user.id))
         .returning();
 
+      invalidatePrefsCache(req.user.id);
+      setCachedPrefs(req.user.id, result[0]);
       return res.json(result[0]);
     }
   } catch (error) {
@@ -149,9 +179,13 @@ preferencesRouter.post("/reset", async (req: any, res) => {
         })
         .returning();
 
+      invalidatePrefsCache(req.user.id);
+      setCachedPrefs(req.user.id, newPrefs[0]);
       return res.json(newPrefs[0]);
     }
 
+    invalidatePrefsCache(req.user.id);
+    setCachedPrefs(req.user.id, result[0]);
     res.json(result[0]);
   } catch (error) {
     console.error('Error resetting preferences:', error);

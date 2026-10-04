@@ -48,11 +48,43 @@ export async function fetchWithCsrf(url: string, options: RequestInit = {}) {
   }
 
   // Always include credentials for cookies
-  return fetch(url, {
+  let response = await fetch(url, {
     ...options,
     headers,
     credentials: 'include',
   });
+
+  // If 401 Unauthorized on an authenticated request, attempt silent token refresh once
+  if (response.status === 401 && headers.has('Authorization')) {
+    try {
+      const refreshRes = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {})
+        },
+        credentials: 'include',
+      });
+
+      if (refreshRes.ok) {
+        const refreshData = await refreshRes.json();
+        if (refreshData.accessToken) {
+          localStorage.setItem('token', refreshData.accessToken);
+          headers.set('Authorization', `Bearer ${refreshData.accessToken}`);
+          // Retry original request with newly refreshed token
+          response = await fetch(url, {
+            ...options,
+            headers,
+            credentials: 'include',
+          });
+        }
+      }
+    } catch {
+      // Refresh failed; proceed with original 401 response
+    }
+  }
+
+  return response;
 }
 
 /**

@@ -100,39 +100,56 @@ export async function refreshAccessToken(
   refreshToken: string,
   req?: Request
 ): Promise<TokenPair | null> {
-  try {
-    // Find refresh token in database
-    const tokens = await db
-      .select()
-      .from(refreshTokens)
-      .where(
-        and(
-          eq(refreshTokens.token, refreshToken),
-          gte(refreshTokens.expiresAt, new Date())
+  let lastError: any = null;
+
+  // Retry up to 2 times for transient Neon serverless connection wake-up
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      // Find refresh token in database
+      const tokens = await db
+        .select()
+        .from(refreshTokens)
+        .where(
+          and(
+            eq(refreshTokens.token, refreshToken),
+            gte(refreshTokens.expiresAt, new Date())
+          )
         )
-      )
-      .limit(1);
+        .limit(1);
 
-    if (tokens.length === 0 || tokens[0].revokedAt) {
-      return null; // Token not found, expired, or revoked
+      if (tokens.length === 0 || tokens[0].revokedAt) {
+        return null; // Genuine invalid, expired, or revoked token
+      }
+
+      const tokenRecord = tokens[0];
+
+      // Revoke old refresh token (rotation)
+      await db
+        .update(refreshTokens)
+        .set({ revokedAt: new Date() })
+        .where(eq(refreshTokens.id, tokenRecord.id));
+
+      // Generate new token pair (inherits session info from request or original)
+      const newPair = await generateTokenPair(tokenRecord.userId, req);
+
+      return newPair;
+    } catch (error: any) {
+      lastError = error;
+      const isConnectionError = error?.message?.includes('Connection terminated') ||
+                                error?.message?.includes('ECONNRESET') ||
+                                error?.message?.includes('timeout');
+      if (isConnectionError && attempt < 2) {
+        console.warn(`[TokenManager] Temporary DB glitch during refresh (attempt ${attempt}), retrying in 500ms...`);
+        await new Promise(r => setTimeout(r, 500));
+        continue;
+      }
+      break;
     }
-
-    const tokenRecord = tokens[0];
-
-    // Revoke old refresh token (rotation)
-    await db
-      .update(refreshTokens)
-      .set({ revokedAt: new Date() })
-      .where(eq(refreshTokens.id, tokenRecord.id));
-
-    // Generate new token pair (inherits session info from request or original)
-    const newPair = await generateTokenPair(tokenRecord.userId, req);
-
-    return newPair;
-  } catch (error) {
-    console.error('Error refreshing token:', error);
-    return null;
   }
+
+  // If failed due to a database exception, THROW IT so authRoutes returns 503 instead of logging out the user!
+  console.error('Error refreshing token (database error):', lastError);
+  throw lastError;
 }
 
 /**

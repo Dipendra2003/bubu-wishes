@@ -66,7 +66,8 @@ if (connection && process.env.REDIS_URL) {
       connection: connection as any,
       skipVersionCheck: true,
       concurrency: 5,
-      stalledInterval: 30000,
+      stalledInterval: 300000, // 5 min interval recommended for Upstash serverless
+      drainDelay: 10000, // 10s wait when queue is empty to reduce idle socket churn
       maxStalledCount: 2,
       removeOnComplete: {
         count: 100,
@@ -90,15 +91,20 @@ if (connection && process.env.REDIS_URL) {
       logger.warn('Email job stalled', { jobId });
     });
 
-    emailWorker.on("error", (err) => {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      
-      if (errorMessage.includes('ENOTFOUND')) {
-        logger.warn('Email worker: Redis host resolution failed (ENOTFOUND). Please check REDIS_URL.');
-      } else if (errorMessage.includes('ETIMEDOUT') || 
-          errorMessage.includes('ECONNRESET') || 
-          errorMessage.includes('ENETUNREACH')) {
-        logger.warn('Email worker connection error (will auto-retry)', { error: errorMessage });
+    emailWorker.on("error", (err: any) => {
+      const errorMessage = err instanceof Error ? err.message : (typeof err === 'string' ? err : '');
+      const errorStack = err instanceof Error ? err.stack || '' : '';
+      const isTransient = errorMessage.includes('ENOTFOUND') ||
+                          errorMessage.includes('ECONNRESET') ||
+                          errorMessage.includes('ETIMEDOUT') ||
+                          errorMessage.includes('ENETUNREACH') ||
+                          errorMessage.includes('EHOSTUNREACH') ||
+                          errorStack.includes('EHOSTUNREACH') ||
+                          err?.name === 'AggregateError' ||
+                          err?.code === 'EHOSTUNREACH';
+
+      if (isTransient) {
+        logger.debug('Email worker: transient Redis network event (auto-reconnecting)...');
       } else {
         logger.error('Email worker error', err);
       }

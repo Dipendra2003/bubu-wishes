@@ -24,7 +24,7 @@ export default function AdminDashboard() {
         fetch('/api/admin/reviews', { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
       
-      console.log('Reviews Response Status:', reviewsRes.status, reviewsRes.ok);
+
       
       if (usersRes.ok && wishesRes.ok && metricsRes.ok && reviewsRes.ok) {
         const usersData = await usersRes.json();
@@ -32,7 +32,7 @@ export default function AdminDashboard() {
         const metricsData = await metricsRes.json();
         const reviewsData = await reviewsRes.json();
         
-        console.log('Reviews Data:', reviewsData);
+
         
         setUsers(usersData);
         setWishes(wishesData);
@@ -261,7 +261,7 @@ export default function AdminDashboard() {
                 <tr key={u.id} className="hover:bg-gray-50/50 transition">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-rose-400 flex items-center justify-center text-white font-bold shadow-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-linear-to-br from-pink-400 to-rose-400 flex items-center justify-center text-white font-bold shadow-sm shrink-0">
                         {u.name.substring(0,2).toUpperCase()}
                       </div>
                       <div>
@@ -379,7 +379,7 @@ export default function AdminDashboard() {
                   <tr key={r.id} className="hover:bg-gray-50/50 transition">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-400 flex items-center justify-center text-white font-bold shadow-sm shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-linear-to-br from-amber-400 to-orange-400 flex items-center justify-center text-white font-bold shadow-sm shrink-0">
                           {r.userName ? r.userName.substring(0,2).toUpperCase() : 'AN'}
                         </div>
                         <div>

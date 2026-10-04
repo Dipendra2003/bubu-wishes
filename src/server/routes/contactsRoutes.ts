@@ -3,6 +3,7 @@ import { db } from "../../db/index";
 import { contacts } from "../../db/schema";
 import { eq, and } from "drizzle-orm";
 import { authenticate, requireVerified } from "../middleware/auth";
+import { validateUUID } from "../middleware/sanitization";
 
 export const contactsRouter = express.Router();
 
@@ -45,6 +46,10 @@ contactsRouter.post("/", async (req: any, res) => {
 // PUT route for updating contacts
 contactsRouter.put("/:id", async (req: any, res) => {
   try {
+    if (!validateUUID(req.params.id)) {
+      return res.status(400).json({ error: "Invalid contact ID format" });
+    }
+
     const { name, birthday, email, imageUrl, relationship, notes, favorite } = req.body;
     if (!name || !birthday) return res.status(400).json({ error: "Name and birthday are required" });
 
@@ -74,6 +79,10 @@ contactsRouter.put("/:id", async (req: any, res) => {
 
 contactsRouter.delete("/:id", async (req: any, res) => {
   try {
+    if (!validateUUID(req.params.id)) {
+      return res.status(400).json({ error: "Invalid contact ID format" });
+    }
+
     await db.delete(contacts).where(and(eq(contacts.id, req.params.id), eq(contacts.userId, req.user.id)));
     res.json({ success: true });
   } catch (e) {

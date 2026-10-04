@@ -1,7 +1,7 @@
 import rateLimit from "express-rate-limit";
 import { db } from "../../db/index";
 import { emailLogs } from "../../db/schema";
-import { eq, gte, and } from "drizzle-orm";
+import { eq, gte, and, sql } from "drizzle-orm";
 import { Response, NextFunction } from "express";
 import { AuthenticatedRequest } from "../middleware/auth";
 
@@ -55,7 +55,7 @@ export async function perUserEmailRateLimit(
       .from(emailLogs)
       .where(
         and(
-          eq(emailLogs.metadata, `%"userId":"${userId}"%`),
+          sql`${emailLogs.metadata}::text LIKE ${'%"userId":"' + userId + '"%'}`,
           gte(emailLogs.createdAt, oneHourAgo)
         )
       );

@@ -53,7 +53,7 @@ interface HealthCheckResult {
 }
 
 // Comprehensive health check endpoint
-healthRouter.get("/health", async (req, res) => {
+healthRouter.get(["/", "/health"], async (req, res) => {
   const startTime = Date.now();
   const result: HealthCheckResult = {
     status: 'healthy',
@@ -158,7 +158,7 @@ healthRouter.get("/health", async (req, res) => {
 });
 
 // Simple liveness probe (for K8s, Docker, etc.)
-healthRouter.get("/health/live", (req, res) => {
+healthRouter.get(["/live", "/health/live"], (req, res) => {
   res.status(200).json({ 
     status: 'alive',
     timestamp: new Date().toISOString()
@@ -166,7 +166,7 @@ healthRouter.get("/health/live", (req, res) => {
 });
 
 // Readiness probe (checks if app is ready to receive traffic)
-healthRouter.get("/health/ready", async (req, res) => {
+healthRouter.get(["/ready", "/health/ready"], async (req, res) => {
   try {
     // Check database connectivity
     await pool.query('SELECT 1');

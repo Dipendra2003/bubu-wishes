@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { MessageCircleHeart, X, Send, Sparkles, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
@@ -7,8 +8,13 @@ import { useAuth } from '../../App';
 import { fetchWithCsrf } from '../../hooks/useCsrf';
 
 export default function AIAssistantWidget() {
+  const location = useLocation();
   const { token } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+
+  if (location.pathname === '/card') {
+    return null;
+  }
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([
     { role: 'assistant', content: 'Hi there! 👋 I am the BubuWish assistant. How can I help you today?' }
   ]);
@@ -54,7 +60,7 @@ export default function AIAssistantWidget() {
 
   return (
     <>
-      <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end">
+      <div className="fixed bottom-6 right-6 z-100 flex flex-col items-end">
         <AnimatePresence>
           {isOpen && (
             <motion.div 
@@ -62,10 +68,10 @@ export default function AIAssistantWidget() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.9 }}
               transition={{ type: "spring", stiffness: 200, damping: 20 }}
-              className="bg-white rounded-3xl shadow-2xl border border-pink-100 w-[90vw] max-w-[360px] sm:w-[380px] h-[500px] max-h-[70vh] mb-4 flex flex-col overflow-hidden"
+              className="bg-white rounded-3xl shadow-2xl border border-pink-100 w-[90vw] max-w-90 sm:w-95 h-125 max-h-[70vh] mb-4 flex flex-col overflow-hidden"
             >
               {/* Header */}
-              <div className="bg-gradient-to-r from-pink-500 to-rose-400 p-4 text-white flex justify-between items-center shadow-md">
+              <div className="bg-linear-to-r from-pink-500 to-rose-400 p-4 text-white flex justify-between items-center shadow-md">
                 <div className="flex items-center gap-2">
                   <div className="bg-white/20 p-1.5 rounded-full backdrop-blur-sm">
                     <Sparkles className="w-5 h-5 text-pink-50" />
@@ -139,7 +145,7 @@ export default function AIAssistantWidget() {
           onClick={() => setIsOpen(!isOpen)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="bg-gradient-to-r from-pink-500 to-rose-400 text-white p-4 rounded-full shadow-xl shadow-pink-200/50 hover:shadow-2xl hover:shadow-pink-300/60 transition flex items-center justify-center relative mt-4"
+          className="bg-linear-to-r from-pink-500 to-rose-400 text-white p-4 rounded-full shadow-xl shadow-pink-200/50 hover:shadow-2xl hover:shadow-pink-300/60 transition flex items-center justify-center relative mt-4"
         >
           {isOpen ? <X className="w-6 h-6" /> : <MessageCircleHeart className="w-6 h-6" />}
           {!isOpen && (

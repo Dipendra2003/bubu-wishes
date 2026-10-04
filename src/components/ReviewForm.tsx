@@ -68,7 +68,7 @@ export function ReviewForm({ onClose }: ReviewFormProps) {
             <button 
               type="submit" 
               disabled={reviewLoading}
-              className="w-full py-3 bg-gradient-to-r from-pink-500 to-rose-400 hover:from-pink-600 hover:to-rose-500 text-white font-bold rounded-xl shadow-md transition disabled:opacity-50"
+              className="w-full py-3 bg-linear-to-r from-pink-500 to-rose-400 hover:from-pink-600 hover:to-rose-500 text-white font-bold rounded-xl shadow-md transition disabled:opacity-50"
             >
               {reviewLoading ? 'Submitting...' : 'Submit Review'}
             </button>

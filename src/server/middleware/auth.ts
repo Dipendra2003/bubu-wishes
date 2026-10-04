@@ -11,16 +11,37 @@ export interface AuthenticatedRequest extends Request {
   user?: any;
 }
 
+// 30-second in-memory cache to eliminate repetitive cross-region DB lookups on sequential API calls
+const userCache = new Map<string, { user: any; expiresAt: number }>();
+
+export function invalidateUserCache(userId: string) {
+  userCache.delete(userId);
+}
+
 export const authenticate = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ error: "Unauthorized" });
   
   try {
     const decoded: any = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+    const now = Date.now();
     
-    // Check database to ensure user still exists and isn't suspended
-    const userRecords = await db.select().from(users).where(eq(users.id, decoded.userId)).limit(1);
-    const user = userRecords[0];
+    // Check in-memory cache first
+    const cached = userCache.get(userId);
+    let user: any;
+    
+    if (cached && cached.expiresAt > now) {
+      user = cached.user;
+    } else {
+      // Check database to ensure user still exists and isn't suspended
+      const userRecords = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      user = userRecords[0];
+      
+      if (user) {
+        userCache.set(userId, { user, expiresAt: now + 30000 }); // 30s TTL
+      }
+    }
     
     if (!user) return res.status(401).json({ error: "User not found" });
     if (user.suspended) return res.status(403).json({ error: "Account suspended" });

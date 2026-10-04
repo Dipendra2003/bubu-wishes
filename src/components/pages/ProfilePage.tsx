@@ -9,13 +9,13 @@ import EmailPreferences from '../EmailPreferences';
 import { fetchWithCsrf } from '../../hooks/useCsrf';
 
 export default function ProfilePage() {
-  const { user: authUser, token, logout } = useAuth();
+  const { user: authUser, token, logout, updateUser } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!authUser);
   const [saving, setSaving] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(authUser);
   
   // Active tab from URL or default to 'profile'
   const activeTab = (searchParams.get('tab') as 'profile' | 'preferences') || 'profile';
@@ -25,15 +25,15 @@ export default function ProfilePage() {
   };
   
   const [formData, setFormData] = useState({
-    name: '',
-    bio: '',
-    phone: '',
-    birthday: '',
-    location: '',
-    timezone: '',
+    name: authUser?.name || '',
+    bio: authUser?.bio || '',
+    phone: authUser?.phone || '',
+    birthday: authUser?.birthday ? new Date(authUser.birthday).toISOString().split('T')[0] : '',
+    location: authUser?.location || '',
+    timezone: authUser?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
 
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(authUser?.avatarUrl || null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // Password change state
@@ -57,8 +57,27 @@ export default function ProfilePage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    if (authUser && !user) {
+      setUser(authUser);
+      setFormData(prev => ({
+        name: prev.name || authUser.name || '',
+        bio: prev.bio || authUser.bio || '',
+        phone: prev.phone || authUser.phone || '',
+        birthday: prev.birthday || (authUser.birthday ? new Date(authUser.birthday).toISOString().split('T')[0] : ''),
+        location: prev.location || authUser.location || '',
+        timezone: prev.timezone || authUser.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+      }));
+      if (!avatarPreview && authUser.avatarUrl) {
+        setAvatarPreview(authUser.avatarUrl);
+      }
+    }
+  }, [authUser]);
+
+  useEffect(() => {
+    if (token) {
+      fetchProfile();
+    }
+  }, [token]);
 
   const fetchProfile = async () => {
     try {
@@ -78,6 +97,9 @@ export default function ProfilePage() {
           timezone: data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
         });
         setAvatarPreview(data.avatarUrl || null);
+        if (updateUser) {
+          updateUser(data);
+        }
       } else {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
         console.error('Profile fetch error:', errorData);
@@ -138,6 +160,10 @@ export default function ProfilePage() {
           body: JSON.stringify({ avatarUrl: data.url })
         });
 
+        if (updateUser) {
+          updateUser({ avatarUrl: data.url });
+        }
+
         toast('Avatar updated successfully!', 'success');
       } else {
         const error = await res.json();
@@ -170,6 +196,10 @@ export default function ProfilePage() {
       });
 
       if (res.ok) {
+        const data = await res.json();
+        if (updateUser && data.user) {
+          updateUser(data.user);
+        }
         toast('Profile updated successfully!', 'success');
         // Redirect to dashboard after successful save
         setTimeout(() => {
@@ -265,16 +295,19 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading) {
+  if (loading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-500 font-bold">Loading profile...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-gray-500 font-bold">Loading profile...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 py-8 px-4">
+    <div className="min-h-screen bg-linear-to-br from-pink-50 via-purple-50 to-blue-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <motion.div
@@ -292,7 +325,7 @@ export default function ProfilePage() {
             onClick={() => setActiveTab('profile')}
             className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${
               activeTab === 'profile'
-                ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg'
+                ? 'bg-linear-to-r from-pink-500 to-rose-500 text-white shadow-lg'
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
@@ -303,7 +336,7 @@ export default function ProfilePage() {
             onClick={() => setActiveTab('preferences')}
             className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${
               activeTab === 'preferences'
-                ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg'
+                ? 'bg-linear-to-r from-pink-500 to-rose-500 text-white shadow-lg'
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
@@ -337,7 +370,7 @@ export default function ProfilePage() {
                   className="w-32 h-32 rounded-full object-cover border-4 border-pink-200"
                 />
               ) : (
-                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center border-4 border-pink-200">
+                <div className="w-32 h-32 rounded-full bg-linear-to-br from-pink-400 to-purple-400 flex items-center justify-center border-4 border-pink-200">
                   <span className="text-white text-4xl font-black">
                     {user?.name?.charAt(0).toUpperCase()}
                   </span>
@@ -438,7 +471,7 @@ export default function ProfilePage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white rounded-xl font-bold shadow-lg transition disabled:opacity-50"
+                className="flex-1 px-6 py-3 bg-linear-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white rounded-xl font-bold shadow-lg transition disabled:opacity-50"
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>

@@ -343,7 +343,7 @@ export default function SecurityPage() {
                     animate={{ opacity: 1, x: 0 }}
                     className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition border border-transparent hover:border-gray-200"
                   >
-                    <div className="flex-shrink-0 mt-1">
+                    <div className="shrink-0 mt-1">
                       {getActionIcon(log.action)}
                     </div>
                     

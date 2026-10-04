@@ -29,7 +29,8 @@ if (connection && process.env.REDIS_URL) {
       connection: connection as any,
       skipVersionCheck: true,
       concurrency: 1,
-      stalledInterval: 60000,
+      stalledInterval: 300000, // 5 min interval recommended for Upstash serverless
+      drainDelay: 10000, // 10s wait when queue is empty to reduce idle socket churn
       maxStalledCount: 1,
       removeOnComplete: {
         count: 50,
@@ -53,17 +54,21 @@ if (connection && process.env.REDIS_URL) {
       logger.warn('Birthday reminder job stalled', { jobId });
     });
 
-    birthdayWorker.on("error", (err) => {
+    birthdayWorker.on("error", (err: any) => {
       // Don't crash on Redis connection errors - they will auto-retry
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      const errorMessage = err instanceof Error ? err.message : (typeof err === 'string' ? err : '');
+      const errorStack = err instanceof Error ? err.stack || '' : '';
+      const isTransient = errorMessage.includes('ENOTFOUND') ||
+                          errorMessage.includes('ECONNRESET') ||
+                          errorMessage.includes('ETIMEDOUT') ||
+                          errorMessage.includes('ENETUNREACH') ||
+                          errorMessage.includes('EHOSTUNREACH') ||
+                          errorStack.includes('EHOSTUNREACH') ||
+                          err?.name === 'AggregateError' ||
+                          err?.code === 'EHOSTUNREACH';
       
-      // Check if it's a connection error that will auto-recover
-      if (errorMessage.includes('ENOTFOUND')) {
-        logger.warn('Birthday worker: Redis host resolution failed (ENOTFOUND). Please check REDIS_URL.');
-      } else if (errorMessage.includes('ETIMEDOUT') || 
-          errorMessage.includes('ECONNRESET') || 
-          errorMessage.includes('ENETUNREACH')) {
-        logger.warn('Birthday worker connection error (will auto-retry)', { error: errorMessage });
+      if (isTransient) {
+        logger.debug('Birthday worker: transient Redis network event (auto-reconnecting)...');
       } else {
         logger.error('Birthday worker error', err);
       }

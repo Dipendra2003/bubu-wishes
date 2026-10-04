@@ -104,8 +104,8 @@ function sanitizeObject(obj: any, depth: number = 0): void {
     const value = obj[key];
     
     if (typeof value === 'string') {
-      // Sanitize strings (but allow reasonable HTML for card messages)
-      obj[key] = value.trim().slice(0, 10000);
+      // Sanitize strings — strip HTML angle brackets to prevent injection
+      obj[key] = sanitizeString(value);
     } else if (typeof value === 'object' && value !== null) {
       if (Array.isArray(value)) {
         // Limit array size
@@ -116,7 +116,7 @@ function sanitizeObject(obj: any, depth: number = 0): void {
           if (typeof item === 'object' && item !== null) {
             sanitizeObject(item, depth + 1);
           } else if (typeof item === 'string') {
-            value[index] = item.trim().slice(0, 10000);
+            value[index] = sanitizeString(item);
           }
         });
       } else {

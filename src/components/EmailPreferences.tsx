@@ -12,24 +12,46 @@ interface Preferences {
   timezone: string;
 }
 
+const PREFS_CACHE_KEY = 'email_preferences_cache';
+
+function getCachedPreferences(): Preferences | null {
+  try {
+    const raw = localStorage.getItem(PREFS_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistPreferences(prefs: Preferences) {
+  try {
+    localStorage.setItem(PREFS_CACHE_KEY, JSON.stringify(prefs));
+  } catch {}
+}
+
+const DEFAULT_PREFS: Preferences = {
+  emailReminders: true,
+  reminderDays: '1,3,7',
+  reminderTime: '08:00',
+  birthdayWishEmail: true,
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+};
+
 export default function EmailPreferences() {
   const { token } = useAuth();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [preferences, setPreferences] = useState<Preferences>({
-    emailReminders: true,
-    reminderDays: '1,3,7',
-    reminderTime: '08:00',
-    birthdayWishEmail: true,
-    timezone: 'UTC'
-  });
+  const [syncing, setSyncing] = useState(true);
+  const [preferences, setPreferences] = useState<Preferences>(
+    () => getCachedPreferences() || DEFAULT_PREFS
+  );
 
   useEffect(() => {
     fetchPreferences();
   }, []);
 
   const fetchPreferences = async () => {
+    setSyncing(true);
     try {
       const res = await fetch('/api/preferences', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -39,11 +61,15 @@ export default function EmailPreferences() {
 
       const data = await res.json();
       setPreferences(data);
+      persistPreferences(data);
     } catch (error) {
       console.error('Error fetching preferences:', error);
-      toast('Failed to load preferences', 'error');
+      // Only toast if we have no cached data at all
+      if (!getCachedPreferences()) {
+        toast('Using default preferences — server sync failed', 'error');
+      }
     } finally {
-      setLoading(false);
+      setSyncing(false);
     }
   };
 
@@ -66,6 +92,7 @@ export default function EmailPreferences() {
 
       const data = await res.json();
       setPreferences(data);
+      persistPreferences(data);
       toast('Preferences saved successfully!', 'success');
     } catch (error: any) {
       console.error('Error saving preferences:', error);
@@ -89,6 +116,7 @@ export default function EmailPreferences() {
 
       const data = await res.json();
       setPreferences(data);
+      persistPreferences(data);
       toast('Preferences reset to defaults', 'success');
     } catch (error) {
       console.error('Error resetting preferences:', error);
@@ -117,19 +145,11 @@ export default function EmailPreferences() {
     return days.includes(day);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-pink-500 font-semibold">Loading preferences...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-3xl mx-auto">
       <div className="bg-white rounded-2xl shadow-lg border-2 border-pink-100 overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-pink-500 to-rose-500 px-6 py-6">
+        <div className="bg-linear-to-r from-pink-500 to-rose-500 px-6 py-6">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-white/20 rounded-full backdrop-blur-sm">
               <Mail className="w-6 h-6 text-white" />
@@ -146,9 +166,9 @@ export default function EmailPreferences() {
           <div className="flex items-start justify-between p-4 bg-pink-50 rounded-xl border-2 border-pink-200">
             <div className="flex items-start gap-3 flex-1">
               {preferences.emailReminders ? (
-                <Bell className="w-6 h-6 text-pink-500 mt-0.5 flex-shrink-0" />
+                <Bell className="w-6 h-6 text-pink-500 mt-0.5 shrink-0" />
               ) : (
-                <BellOff className="w-6 h-6 text-gray-400 mt-0.5 flex-shrink-0" />
+                <BellOff className="w-6 h-6 text-gray-400 mt-0.5 shrink-0" />
               )}
               <div>
                 <h3 className="font-bold text-gray-900 text-lg">Birthday Reminders</h3>
@@ -159,7 +179,7 @@ export default function EmailPreferences() {
             </div>
             <button
               onClick={() => setPreferences({ ...preferences, emailReminders: !preferences.emailReminders })}
-              className={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 ${
+              className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 ${
                 preferences.emailReminders ? 'bg-pink-500' : 'bg-gray-300'
               }`}
             >
@@ -229,7 +249,7 @@ export default function EmailPreferences() {
           {/* Birthday Wish Email Toggle */}
           <div className="flex items-start justify-between p-4 bg-purple-50 rounded-xl border-2 border-purple-200">
             <div className="flex items-start gap-3 flex-1">
-              <Mail className="w-6 h-6 text-purple-500 mt-0.5 flex-shrink-0" />
+              <Mail className="w-6 h-6 text-purple-500 mt-0.5 shrink-0" />
               <div>
                 <h3 className="font-bold text-gray-900 text-lg">Birthday Wish Emails</h3>
                 <p className="text-sm text-gray-600 mt-1">
@@ -239,7 +259,7 @@ export default function EmailPreferences() {
             </div>
             <button
               onClick={() => setPreferences({ ...preferences, birthdayWishEmail: !preferences.birthdayWishEmail })}
-              className={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+              className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
                 preferences.birthdayWishEmail ? 'bg-purple-500' : 'bg-gray-300'
               }`}
             >
@@ -256,7 +276,7 @@ export default function EmailPreferences() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-linear-to-r from-pink-500 to-rose-500 text-white font-bold rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <>
@@ -285,7 +305,7 @@ export default function EmailPreferences() {
       {/* Info Box */}
       <div className="mt-6 bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
         <div className="flex gap-3">
-          <div className="text-blue-500 flex-shrink-0">
+          <div className="text-blue-500 shrink-0">
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>

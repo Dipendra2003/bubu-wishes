@@ -266,17 +266,25 @@ async function sendReminderToUser(check: ReminderCheck): Promise<boolean> {
     });
     
     // Queue or send email (outside transaction)
+    let enqueued = false;
     if (emailQueue) {
-      await emailQueue.add("send-email", {
-        to: check.userEmail,
-        subject,
-        html: htmlBody,
-        logId: emailLogId
-      }, {
-        attempts: 3,
-        backoff: { type: "exponential", delay: 5000 }
-      });
-    } else {
+      try {
+        await emailQueue.add("send-email", {
+          to: check.userEmail,
+          subject,
+          html: htmlBody,
+          logId: emailLogId
+        }, {
+          attempts: 3,
+          backoff: { type: "exponential", delay: 5000 }
+        });
+        enqueued = true;
+      } catch (queueErr) {
+        logger.warn('Failed to enqueue email job, falling back to direct send', { error: queueErr });
+      }
+    }
+    
+    if (!enqueued) {
       await sendEmail(check.userEmail, subject, htmlBody);
       await updateEmailLog(emailLogId, 'sent');
     }
@@ -370,17 +378,25 @@ async function sendBirthdayWish(check: ReminderCheck): Promise<boolean> {
     });
     
     // Queue or send (outside transaction)
+    let enqueued = false;
     if (emailQueue) {
-      await emailQueue.add("send-email", {
-        to: check.contactEmail,
-        subject,
-        html: htmlBody,
-        logId: emailLogId
-      }, {
-        attempts: 3,
-        backoff: { type: "exponential", delay: 5000 }
-      });
-    } else {
+      try {
+        await emailQueue.add("send-email", {
+          to: check.contactEmail,
+          subject,
+          html: htmlBody,
+          logId: emailLogId
+        }, {
+          attempts: 3,
+          backoff: { type: "exponential", delay: 5000 }
+        });
+        enqueued = true;
+      } catch (queueErr) {
+        logger.warn('Failed to enqueue birthday wish, falling back to direct send', { error: queueErr });
+      }
+    }
+    
+    if (!enqueued) {
       await sendEmail(check.contactEmail, subject, htmlBody);
       await updateEmailLog(emailLogId, 'sent');
     }
