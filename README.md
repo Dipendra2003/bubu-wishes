@@ -1,7 +1,7 @@
 # 🎉 Birthday Bubu Wishes - 3D Interactive Birthday Card App
 
 <div align="center">
-  <img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
+  <img width="1200" height="475" alt="Birthday Bubu Wishes - Bubu & Dudu Birthday Banner" src="public/bubu-dudu-banner.jpg" />
   
   **Create magical, personalized 3D birthday cards with AI assistance**
   
@@ -40,6 +40,7 @@ Birthday Bubu Wishes is a modern full-stack web application that allows users to
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **React 19** - UI library
 - **TypeScript** - Type safety
 - **Vite** - Build tool and dev server
@@ -49,6 +50,7 @@ Birthday Bubu Wishes is a modern full-stack web application that allows users to
 - **Lucide React** - Icon library
 
 ### Backend
+
 - **Node.js** - Runtime environment
 - **Express** - Web framework
 - **TypeScript** - Type safety
@@ -59,6 +61,7 @@ Birthday Bubu Wishes is a modern full-stack web application that allows users to
 - **Redis** - Queue backend
 
 ### External Services
+
 - **Google Gemini AI** - AI-powered content generation
 - **Cloudinary** - Media storage and CDN
 - **Nodemailer** - Email delivery
@@ -80,24 +83,28 @@ Birthday Bubu Wishes is a modern full-stack web application that allows users to
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/Dipendra2003/bubu-wishes.git
    cd bubu-wishes
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables**
-   
+
    Copy `.env.example` to `.env` and fill in your credentials:
+
    ```bash
    cp .env.example .env
    ```
-   
+
    Edit `.env` with your actual values:
+
    ```env
    GEMINI_API_KEY=your_gemini_api_key
    APP_URL=http://localhost:3000
@@ -117,16 +124,19 @@ Birthday Bubu Wishes is a modern full-stack web application that allows users to
    ```
 
 4. **Run database migrations**
+
    ```bash
    npm run migrate
    ```
 
 5. **Create an admin user**
+
    ```bash
    npm run create:admin
    ```
 
 6. **Start the development server**
+
    ```bash
    npm run dev
    ```
@@ -137,19 +147,19 @@ Birthday Bubu Wishes is a modern full-stack web application that allows users to
 
 ## 📦 Available Scripts
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start development server with hot reload |
-| `npm run build` | Build for production |
-| `npm start` | Start production server |
-| `npm run clean` | Clean build artifacts |
-| `npm run lint` | Type check with TypeScript |
-| `npm run migrate` | Run database migrations |
-| `npm run create:admin` | Create admin user |
-| `npm run manage:users` | User management CLI |
-| `npm run cleanup:users` | Clean up unused users |
-| `npm run check:reviews` | Check reviews status |
-| `npm run feature:review` | Feature review utility |
+| Script                   | Description                              |
+| ------------------------ | ---------------------------------------- |
+| `npm run dev`            | Start development server with hot reload |
+| `npm run build`          | Build for production                     |
+| `npm start`              | Start production server                  |
+| `npm run clean`          | Clean build artifacts                    |
+| `npm run lint`           | Type check with TypeScript               |
+| `npm run migrate`        | Run database migrations                  |
+| `npm run create:admin`   | Create admin user                        |
+| `npm run manage:users`   | User management CLI                      |
+| `npm run cleanup:users`  | Clean up unused users                    |
+| `npm run check:reviews`  | Check reviews status                     |
+| `npm run feature:review` | Feature review utility                   |
 
 ---
 
@@ -176,6 +186,7 @@ The app features a comprehensive automated birthday reminder system that helps y
 ### Configuration
 
 Configure your preferences in `/profile?tab=preferences`:
+
 - Enable/disable reminders
 - Select reminder days
 - Set preferred reminder time
@@ -231,6 +242,7 @@ bubu-&-dudu-3d-birthday-card/
 ## 🎨 Features in Detail
 
 ### 3D Card Creation
+
 - Choose from multiple themes and color schemes
 - Add personalized text messages
 - Upload photos, GIFs, or videos
@@ -238,17 +250,20 @@ bubu-&-dudu-3d-birthday-card/
 - Set unlock conditions (puzzle or countdown)
 
 ### AI Assistant
+
 - Powered by Google Gemini AI
 - Generates creative greeting messages
 - Suggests card themes and ideas
 - Context-aware responses
 
 ### Contact Management
+
 - Save friend and family birthdays
 - Automatic birthday reminders
 - Email notifications via scheduled jobs
 
 ### Admin Features
+
 - User management dashboard
 - Analytics and metrics
 - Feature reviews
@@ -259,6 +274,7 @@ bubu-&-dudu-3d-birthday-card/
 ## 🌐 API Endpoints
 
 ### Authentication
+
 - `POST /api/auth/signup` - Register new user
 - `POST /api/auth/login` - Login user
 - `POST /api/auth/verify-email` - Verify email with OTP
@@ -266,6 +282,7 @@ bubu-&-dudu-3d-birthday-card/
 - `GET /api/auth/me` - Get current user
 
 ### Cards
+
 - `GET /api/cards` - List user cards
 - `POST /api/cards` - Create new card
 - `GET /api/cards/:id` - Get card by ID
@@ -273,17 +290,20 @@ bubu-&-dudu-3d-birthday-card/
 - `DELETE /api/cards/:id` - Delete card
 
 ### Contacts
+
 - `GET /api/contacts` - List contacts
 - `POST /api/contacts` - Add contact
 - `PUT /api/contacts/:id` - Update contact
 - `DELETE /api/contacts/:id` - Delete contact
 
 ### Reviews
+
 - `GET /api/reviews` - List reviews
 - `POST /api/reviews` - Submit review
 - `GET /api/reviews/featured` - Get featured reviews
 
 ### AI
+
 - `POST /api/ai/chat` - Chat with AI assistant
 
 ---
@@ -291,20 +311,26 @@ bubu-&-dudu-3d-birthday-card/
 ## 🔧 Configuration
 
 ### Database Schema
+
 The app uses PostgreSQL with Drizzle ORM. Main tables:
+
 - `users` - User accounts
 - `cards` - Birthday cards
 - `contacts` - Saved birthdays
 - `reviews` - User reviews
 
 ### Email Queue
+
 BullMQ with Redis handles asynchronous email delivery:
+
 - Email verification
 - Birthday reminders
 - System notifications
 
 ### Media Upload
+
 Cloudinary handles all media uploads with:
+
 - Unsigned upload preset for client-side uploads
 - Secure API for server-side operations
 - Automatic optimization and CDN delivery
@@ -316,11 +342,13 @@ Cloudinary handles all media uploads with:
 ### Production Build
 
 1. **Build the application**
+
    ```bash
    npm run build
    ```
 
 2. **Set production environment variables**
+
    ```bash
    export NODE_ENV=production
    ```
@@ -331,12 +359,14 @@ Cloudinary handles all media uploads with:
    ```
 
 ### Recommended Platforms
+
 - **Backend**: Railway, Render, Fly.io, or Google Cloud Run
 - **Database**: Neon, Supabase, or Railway PostgreSQL
 - **Redis**: Upstash, Redis Cloud, or Railway Redis
 - **Frontend**: Vercel, Netlify (static export not recommended due to server integration)
 
 ### Environment Considerations
+
 - Use secure JWT_SECRET in production
 - Enable SSL/TLS for database connections
 - Configure CORS appropriately
@@ -356,6 +386,7 @@ Contributions are welcome! Please follow these steps:
 5. Open a Pull Request
 
 ### Development Guidelines
+
 - Follow TypeScript best practices
 - Maintain consistent code style
 - Add comments for complex logic
