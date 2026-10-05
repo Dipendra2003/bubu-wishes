@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../App';
+import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './ui/ToastProvider';
 import { fetchWithCsrf } from '../hooks/useCsrf';
 

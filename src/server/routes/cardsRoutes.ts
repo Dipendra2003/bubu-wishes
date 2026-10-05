@@ -53,8 +53,8 @@ cardsRouter.use(requireVerified); // Require email verification for all card ope
 cardsRouter.post("/", async (req: any, res) => {
   try {
     const data = req.body;
-    if (!data.message && !data.customPhotoUrls && !data.recordedAudio && !data.customVideoUrl) {
-        return res.status(400).json({ error: "Message or media is required" });
+    if (!data.message && (!data.customPhotoUrls || data.customPhotoUrls.length === 0) && !data.recordedAudio && !data.customVideoUrl && (!data.surprisePhoto || data.surprisePhoto === 'none')) {
+        return res.status(400).json({ error: "Please add a message, a photo, or choose a surprise illustration to save your card!" });
     }
     
     // Check sizes on the backend to avoid massive payloads just in case

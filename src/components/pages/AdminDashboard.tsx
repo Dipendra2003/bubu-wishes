@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../App';
+import { useAuth } from '../../contexts/AuthContext';
 import { Users, Search, Mail, ShieldCheck, MailWarning, Gift, Trash2, Ban, CheckCircle2, TrendingUp, BarChart, Star, MessageSquare } from 'lucide-react';
 import { useToast } from '../ui/ToastProvider';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';

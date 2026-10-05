@@ -3,13 +3,13 @@ import ReactPlayer from 'react-player';
 import { YouTubeEmbed } from './YouTubeEmbed';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CardData, ThemeType, MusicType, PhotoType, FloatingEffectType } from '../types';
-import { ThemeColors } from './ThemeGraphics';
+import { ThemeColors, SurprisePhotoIcon } from './ThemeGraphics';
 import { cn, encodeCardData, getYouTubeVideoId } from '../lib/utils';
 import { Heart, PartyPopper, Moon, Music, Wand2, Copy, Check, Puzzle, Palette, Image as ImageIcon, Clock, Mic, Square, Gift, Sparkles, Save, FolderOpen, Play, Pause, Volume2, Video, Link2, X } from 'lucide-react';
 import { playTune, stopTune } from '../lib/audio';
 import { motion } from 'motion/react';
 import { useToast } from './ui/ToastProvider';
-import { useAuth } from '../App';
+import { useAuth } from '../contexts/AuthContext';
 import { MediaLibrary } from './MediaLibrary';
 import { fetchWithCsrf } from '../hooks/useCsrf';
 
@@ -48,6 +48,10 @@ export function CardEditor({ initialData, onPreview, onSaveOnly, cardId, onCardS
   const [mediaLibraryType, setMediaLibraryType] = useState<'all' | 'image' | 'audio' | 'video'>('all');
   const [activeCardId, setActiveCardId] = useState<string | null>(cardId || null);
   const [isSaving, setIsSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [isPlayingTestMusic, setIsPlayingTestMusic] = useState(false);
   const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
   const audioChunksRef = React.useRef<BlobPart[]>([]);
@@ -363,6 +367,30 @@ export function CardEditor({ initialData, onPreview, onSaveOnly, cardId, onCardS
     }
   };
 
+  const handleSearchImages = async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    setHasSearched(true);
+    try {
+      const response = await fetch(`/api/giphy-search?q=${encodeURIComponent(searchQuery)}`);
+      
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      const resData = await response.json();
+      if (resData.data) {
+        setSearchResults(resData.data);
+      }
+    } catch (error: any) {
+      console.error("Search failed:", error);
+      toast(`Search failed: ${error.message || 'Please try again later'}`, "error");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   const themes: { id: ThemeType; label: string; icon: React.ReactNode; color: string }[] = [
     { id: 'party', label: 'Party', icon: <PartyPopper className="w-6 h-6" />, color: 'text-amber-500' },
     { id: 'love', label: 'Love', icon: <Heart className="w-6 h-6" />, color: 'text-rose-500' },
@@ -370,6 +398,10 @@ export function CardEditor({ initialData, onPreview, onSaveOnly, cardId, onCardS
     { id: 'valentine', label: 'Valentine', icon: <Heart className="w-6 h-6" />, color: 'text-red-500' },
     { id: 'newyear', label: 'New Year', icon: <Sparkles className="w-6 h-6" />, color: 'text-slate-600' },
     { id: 'christmas', label: 'Christmas', icon: <Gift className="w-6 h-6" />, color: 'text-emerald-500' },
+    { id: 'romantic', label: 'Romantic', icon: <Heart className="w-6 h-6" />, color: 'text-fuchsia-500' },
+    { id: 'night', label: 'Night', icon: <Moon className="w-6 h-6" />, color: 'text-slate-500' },
+    { id: 'galaxy', label: 'Galaxy', icon: <Sparkles className="w-6 h-6" />, color: 'text-purple-500' },
+    { id: 'forest', label: 'Forest', icon: <Sparkles className="w-6 h-6" />, color: 'text-green-500' },
   ];
 
   const musicOptions: { id: MusicType; label: string }[] = [
@@ -381,11 +413,12 @@ export function CardEditor({ initialData, onPreview, onSaveOnly, cardId, onCardS
   ];
 
   const photoOptions: { id: PhotoType; label: string }[] = [
-    { id: 'cake', label: 'Bubu & Dudu Cake' },
-    { id: 'hug', label: 'Warm Hug' },
-    { id: 'stargazing', label: 'Stargazing' },
+    { id: 'cake', label: 'Bubu & Dudu Cake 🎂' },
+    { id: 'hug', label: 'Warm Hug 🤗' },
+    { id: 'stargazing', label: 'Stargazing ✨' },
     { id: 'custom', label: 'Upload Photos 📸' },
-    { id: 'none', label: 'No Photo' },
+    { id: 'search', label: 'Search Web 🔍' },
+    { id: 'none', label: 'No Photo 🚫' },
   ];
 
   const floatingOptions: { id: FloatingEffectType; label: string; icon: string }[] = [
@@ -776,22 +809,36 @@ export function CardEditor({ initialData, onPreview, onSaveOnly, cardId, onCardS
              <label className="text-[10px] sm:text-xs font-bold text-gray-500 mb-2 sm:mb-3 uppercase tracking-widest flex items-center gap-1.5 sm:gap-2">
                <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4" /> Surprise Photo / Illustration Inside
              </label>
-             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+             <div className="flex flex-wrap gap-2 sm:gap-3">
                {photoOptions.map((opt) => (
                  <button
                    key={opt.id}
                    onClick={() => setData({ ...data, surprisePhoto: opt.id })}
                    className={cn(
-                     "p-2 sm:p-3 rounded-lg sm:rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-1 sm:gap-2 duration-300",
+                     "px-4 py-2 sm:px-5 sm:py-2.5 rounded-full border-2 transition-all flex items-center justify-center gap-1.5 duration-300",
                      data.surprisePhoto === opt.id
-                       ? "bg-pink-100/50 border-pink-400 text-pink-600 shadow-sm"
-                       : "bg-white/40 border-transparent text-gray-500 hover:bg-white/60"
+                       ? "bg-pink-100 border-pink-400 text-pink-600 shadow-sm"
+                       : "bg-white border-gray-200 text-gray-500 hover:border-pink-200 hover:bg-white hover:text-pink-500"
                    )}
                  >
-                   <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-center leading-tight">{opt.label}</span>
+                   <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">{opt.label}</span>
                  </button>
                ))}
              </div>
+             {['cake', 'hug', 'stargazing'].includes(data.surprisePhoto || '') && (
+               <motion.div 
+                 initial={{ opacity: 0, height: 0 }}
+                 animate={{ opacity: 1, height: 'auto' }}
+                 className="mt-4 p-4 rounded-2xl bg-white/60 border border-white/80"
+               >
+                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-2 text-center">Illustration Preview</label>
+                 <div className="w-full h-32 flex items-center justify-center rounded-xl bg-black/5 overflow-hidden">
+                   <div className="scale-75 origin-center">
+                     <SurprisePhotoIcon photo={data.surprisePhoto as PhotoType} />
+                   </div>
+                 </div>
+               </motion.div>
+             )}
 
              {data.surprisePhoto === 'custom' && (
                <motion.div 
@@ -923,33 +970,88 @@ export function CardEditor({ initialData, onPreview, onSaveOnly, cardId, onCardS
                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-pink-50 file:text-pink-600 hover:file:bg-pink-100 transition-all cursor-pointer"
                    />
                  </div>
-                 {((data.customPhotoUrls && data.customPhotoUrls.length > 0) || data.customPhotoUrl) && (
-                   <div>
-                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Previews</label>
-                     <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                       {(data.customPhotoUrls || (data.customPhotoUrl ? [data.customPhotoUrl] : [])).map((url, i) => (
-                         <div key={i} className="relative w-24 h-24 shrink-0 rounded-lg bg-black/5 overflow-hidden flex items-center justify-center group">
-                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                           <img src={url} alt={`Custom uploaded ${i + 1}`} className="w-full h-full object-contain p-1" />
-                           <button
-                             onClick={() => {
-                               const arr = data.customPhotoUrls || (data.customPhotoUrl ? [data.customPhotoUrl] : []);
-                               const newArr = arr.filter((_, idx) => idx !== i);
-                               setData({ ...data, customPhotoUrls: newArr });
-                             }}
-                             className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                           >
-                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                           </button>
-                         </div>
-                       ))}
-                     </div>
+               </motion.div>
+             )}
+
+             {data.surprisePhoto === 'search' && (
+               <motion.div 
+                 initial={{ opacity: 0, height: 0 }}
+                 animate={{ opacity: 1, height: 'auto' }}
+                 className="mt-4 p-4 rounded-2xl bg-white/40 border border-white/60 space-y-4"
+               >
+                 <div className="flex gap-2">
+                   <input
+                     type="text"
+                     value={searchQuery}
+                     onChange={(e) => setSearchQuery(e.target.value)}
+                     onKeyDown={(e) => e.key === 'Enter' && handleSearchImages()}
+                     placeholder="Search Giphy (e.g. Bubu Dudu)..."
+                     className="flex-1 bg-white/80 border border-pink-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
+                   />
+                   <button
+                     onClick={handleSearchImages}
+                     disabled={isSearching}
+                     className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                   >
+                     {isSearching ? 'Searching...' : 'Search'}
+                   </button>
+                 </div>
+                 
+                 {hasSearched && searchResults.length === 0 && !isSearching && (
+                   <div className="text-center text-gray-500 text-sm py-4">No results found for "{searchQuery}"</div>
+                 )}
+
+                 {searchResults.length > 0 && (
+                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-60 overflow-y-auto p-1 custom-scrollbar">
+                     {searchResults.map((gif) => (
+                       <div 
+                         key={gif.id}
+                         onClick={() => {
+                           const url = gif.images.original.url;
+                           const currentUrls = data.customPhotoUrls || (data.customPhotoUrl ? [data.customPhotoUrl] : []);
+                           if (!currentUrls.includes(url)) {
+                             setData({ ...data, customPhotoUrls: [...currentUrls, url] });
+                             toast("Image added to card! 🎉", "success");
+                           } else {
+                             toast("Image already added!", "info");
+                           }
+                         }}
+                         className="cursor-pointer border-2 border-transparent hover:border-pink-400 rounded-lg overflow-hidden transition-all aspect-square bg-white"
+                       >
+                         {/* eslint-disable-next-line @next/next/no-img-element */}
+                         <img src={gif.images.preview_gif.url} alt={gif.title} className="w-full h-full object-cover" />
+                       </div>
+                     ))}
                    </div>
                  )}
                </motion.div>
              )}
 
-              
+              {/* Shared Previews Section for Uploaded and Searched Images */}
+              {((data.customPhotoUrls && data.customPhotoUrls.length > 0) || data.customPhotoUrl) && (
+                <div className="mt-4 p-4 rounded-2xl bg-white/60 border border-white/80">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-2">Selected Images (Will appear in 3D Card)</label>
+                  <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                    {(data.customPhotoUrls || (data.customPhotoUrl ? [data.customPhotoUrl] : [])).map((url, i) => (
+                      <div key={i} className="relative w-24 h-24 shrink-0 rounded-lg bg-black/5 overflow-hidden flex items-center justify-center group border border-gray-200">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt={`Custom photo ${i + 1}`} className="w-full h-full object-contain p-1" />
+                        <button
+                          onClick={() => {
+                            const arr = data.customPhotoUrls || (data.customPhotoUrl ? [data.customPhotoUrl] : []);
+                            const newArr = arr.filter((_, idx) => idx !== i);
+                            // If last photo removed, keep customPhotoUrls as empty array to clear it properly
+                            setData({ ...data, customPhotoUrls: newArr, customPhotoUrl: newArr.length > 0 ? newArr[0] : '' });
+                          }}
+                          className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
            {/* Dedicated Video Greeting Section - Can be used together with photos! */}
            <div className="p-3.5 sm:p-5 rounded-2xl bg-white/40 border border-white/60 space-y-4">
@@ -1151,14 +1253,14 @@ export function CardEditor({ initialData, onPreview, onSaveOnly, cardId, onCardS
                       key={opt.id}
                       onClick={() => setData({ ...data, floatingEffect: opt.id })}
                       className={cn(
-                        "p-2 sm:p-3 rounded-lg sm:rounded-2xl border-2 transition-all flex flex-col items-center justify-center gap-1 sm:gap-2 duration-300",
+                        "px-4 py-2 sm:px-5 sm:py-2.5 rounded-full border-2 transition-all flex items-center justify-center gap-1.5 duration-300",
                         data.floatingEffect === opt.id || (!data.floatingEffect && opt.id === 'none')
-                          ? "bg-pink-100/50 border-pink-400 text-pink-600 shadow-sm"
-                          : "bg-white/40 border-transparent text-gray-500 hover:bg-white/60"
+                          ? "bg-pink-100 border-pink-400 text-pink-600 shadow-sm"
+                          : "bg-white/80 border-gray-200 text-gray-500 hover:border-pink-200 hover:bg-white hover:text-pink-500"
                       )}
                     >
                       <span className="text-base sm:text-xl leading-none">{opt.icon}</span>
-                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-center leading-tight">{opt.label}</span>
+                      <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">{opt.label}</span>
                     </button>
                   ))}
                 </div>

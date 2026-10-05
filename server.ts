@@ -335,7 +335,7 @@ async function startServer() {
         // Read and transform index.html
         let template = await vite.transformIndexHtml(url, 
           await (await import('fs')).promises.readFile(
-            path.resolve(__dirname, 'index.html'),
+            path.resolve(process.cwd(), 'index.html'),
             'utf-8'
           )
         );

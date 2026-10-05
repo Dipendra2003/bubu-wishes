@@ -1,20 +1,41 @@
-import React, { useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Link, useLocation } from 'react-router-dom';
-import { MessageCircleHeart, ArrowLeft } from 'lucide-react';
+import React, { useEffect } from "react";
+import { motion } from "motion/react";
+import { Link, useLocation } from "react-router-dom";
+import {
+  MessageCircleHeart,
+  ArrowLeft,
+  LayoutDashboard,
+  User,
+} from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
 
-export default function StaticPage({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+export default function StaticPage({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
   const location = useLocation();
+  const { user } = useAuth();
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, [location.pathname]);
 
   return (
     <div className="flex-1 relative font-sans flex flex-col bg-[#FFF0F5] w-full overflow-hidden">
       {/* Background orbs */}
-      <div className="absolute top-[-15%] left-[-10%] w-125 h-125 bg-[#FFD1DC] rounded-full blur-[140px] opacity-50 pointer-events-none z-0 animate-pulse" style={{ animationDuration: '8s' }}></div>
-      <div className="absolute bottom-[-15%] right-[-10%] w-125 h-125 bg-[#B0E0E6] rounded-full blur-[140px] opacity-50 pointer-events-none z-0 animate-pulse" style={{ animationDuration: '10s' }}></div>
+      <div
+        className="absolute top-[-15%] left-[-10%] w-125 h-125 bg-[#FFD1DC] rounded-full blur-[140px] opacity-50 pointer-events-none z-0 animate-pulse"
+        style={{ animationDuration: "8s" }}
+      ></div>
+      <div
+        className="absolute bottom-[-15%] right-[-10%] w-125 h-125 bg-[#B0E0E6] rounded-full blur-[140px] opacity-50 pointer-events-none z-0 animate-pulse"
+        style={{ animationDuration: "10s" }}
+      ></div>
       <div className="absolute top-[30%] right-[10%] w-[300px] h-[300px] bg-[#E8D5F5] rounded-full blur-[120px] opacity-30 pointer-events-none z-0"></div>
 
       {/* Hero Banner */}
@@ -38,13 +59,43 @@ export default function StaticPage({ title, subtitle, children }: { title: strin
               </span>
             </Link>
             <div className="flex items-center gap-2 sm:gap-3 font-bold text-sm">
-              <Link to="/" className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-white/80 hover:text-white transition rounded-full hover:bg-white/10">
+              <Link
+                to="/"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-white/80 hover:text-white transition rounded-full hover:bg-white/10"
+              >
                 <ArrowLeft className="w-4 h-4" /> Home
               </Link>
-              <Link to="/login" className="px-3 py-2 text-white/80 hover:text-white transition rounded-full hover:bg-white/10">Log In</Link>
-              <Link to="/signup" className="px-4 py-2 sm:px-5 sm:py-2.5 bg-white text-pink-600 hover:bg-pink-50 rounded-full shadow-lg transition transform hover:-translate-y-0.5 font-bold">
-                Sign Up
-              </Link>
+              {user ? (
+                <>
+                  <Link
+                    to={user.role === "admin" ? "/admin" : "/dashboard"}
+                    className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-white/80 hover:text-white transition rounded-full hover:bg-white/10"
+                  >
+                    <LayoutDashboard className="w-4 h-4" /> Dashboard
+                  </Link>
+                  <Link
+                    to="/profile"
+                    className="flex items-center gap-1.5 px-4 py-2 sm:px-5 sm:py-2.5 bg-white text-pink-600 hover:bg-pink-50 rounded-full shadow-lg transition transform hover:-translate-y-0.5 font-bold"
+                  >
+                    <User className="w-4 h-4" /> {user.name}
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="px-3 py-2 text-white/80 hover:text-white transition rounded-full hover:bg-white/10"
+                  >
+                    Log In
+                  </Link>
+                  <Link
+                    to="/signup"
+                    className="px-4 py-2 sm:px-5 sm:py-2.5 bg-white text-pink-600 hover:bg-pink-50 rounded-full shadow-lg transition transform hover:-translate-y-0.5 font-bold"
+                  >
+                    Sign Up
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
 
@@ -55,7 +106,10 @@ export default function StaticPage({ title, subtitle, children }: { title: strin
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Link to="/" className="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm font-bold mb-4 transition sm:hidden">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm font-bold mb-4 transition sm:hidden"
+            >
               <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
             </Link>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight font-display">
@@ -71,8 +125,16 @@ export default function StaticPage({ title, subtitle, children }: { title: strin
 
         {/* Wave separator */}
         <div className="absolute bottom-0 left-0 right-0 h-6 sm:h-8">
-          <svg viewBox="0 0 1440 48" fill="none" preserveAspectRatio="none" className="w-full h-full">
-            <path d="M0 48h1440V16C1200 40 960 0 720 16S240 48 0 16v32z" fill="#FFF0F5" />
+          <svg
+            viewBox="0 0 1440 48"
+            fill="none"
+            preserveAspectRatio="none"
+            className="w-full h-full"
+          >
+            <path
+              d="M0 48h1440V16C1200 40 960 0 720 16S240 48 0 16v32z"
+              fill="#FFF0F5"
+            />
           </svg>
         </div>
       </div>
@@ -101,13 +163,25 @@ export default function StaticPage({ title, subtitle, children }: { title: strin
             <span className="text-base font-black text-gray-800">BubuWish</span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-bold text-gray-500">
-            <Link to="/about" className="hover:text-pink-500 transition">About</Link>
-            <Link to="/contact" className="hover:text-pink-500 transition">Contact</Link>
-            <Link to="/faq" className="hover:text-pink-500 transition">FAQ</Link>
-            <Link to="/privacy" className="hover:text-pink-500 transition">Privacy</Link>
-            <Link to="/terms" className="hover:text-pink-500 transition">Terms</Link>
+            <Link to="/about" className="hover:text-pink-500 transition">
+              About
+            </Link>
+            <Link to="/contact" className="hover:text-pink-500 transition">
+              Contact
+            </Link>
+            <Link to="/faq" className="hover:text-pink-500 transition">
+              FAQ
+            </Link>
+            <Link to="/privacy" className="hover:text-pink-500 transition">
+              Privacy
+            </Link>
+            <Link to="/terms" className="hover:text-pink-500 transition">
+              Terms
+            </Link>
           </div>
-          <p className="text-xs sm:text-sm text-gray-400">&copy; {new Date().getFullYear()} BubuWish Magic Cards.</p>
+          <p className="text-xs sm:text-sm text-gray-400">
+            &copy; {new Date().getFullYear()} BubuWish Magic Cards.
+          </p>
         </div>
       </footer>
     </div>

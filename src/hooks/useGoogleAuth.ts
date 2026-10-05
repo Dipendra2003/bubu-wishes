@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from '../App';
+import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ui/ToastProvider';
 import { useNavigate } from 'react-router-dom';
 import { fetchWithCsrf } from './useCsrf';

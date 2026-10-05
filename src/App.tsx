@@ -1,4 +1,4 @@
-import React, { useEffect, useState, createContext, useContext } from 'react';
+import React, { createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { User } from './types';
 import LandingPage from './components/pages/LandingPage';
@@ -21,98 +21,7 @@ import AIAssistantWidget from './components/ui/AIAssistantWidget';
 import HeartCursorTrail from './components/HeartCursorTrail';
 import { useTokenRefresh } from './hooks/useTokenRefresh';
 
-interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  login: (token: string, user: User) => void;
-  logout: () => void;
-  isLoading: boolean;
-  updateUser?: (updates: Partial<User>) => void;
-}
-
-const AuthContext = createContext<AuthContextType | null>(null);
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
-  return context;
-}
-
-function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    try {
-      const saved = localStorage.getItem('user');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-  const [isLoading, setIsLoading] = useState(!user && !!token);
-
-  // Enable automatic token refresh
-  useTokenRefresh();
-
-  useEffect(() => {
-    if (token) {
-      fetch('/api/auth/me', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      .then(res => {
-        if (!res.ok) throw new Error('Invalid token');
-        return res.json();
-      })
-      .then(data => {
-        setUser(data.user);
-        try {
-          localStorage.setItem('user', JSON.stringify(data.user));
-        } catch {}
-      })
-      .catch(() => {
-        setToken(null);
-        setUser(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-      })
-      .finally(() => setIsLoading(false));
-    } else {
-      setIsLoading(false);
-    }
-  }, [token]);
-
-  const login = (newToken: string, newUser: User) => {
-    localStorage.setItem('token', newToken);
-    try {
-      localStorage.setItem('user', JSON.stringify(newUser));
-    } catch {}
-    setToken(newToken);
-    setUser(newUser);
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setToken(null);
-    setUser(null);
-  };
-
-  const updateUser = (updates: Partial<User>) => {
-    setUser(prev => {
-      if (!prev) return null;
-      const updated = { ...prev, ...updates };
-      try {
-        localStorage.setItem('user', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading, updateUser }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function ProtectedRoute({ children, roleRequired }: { children: React.ReactNode, roleRequired?: 'client' | 'admin' }) {
   const { user, isLoading } = useAuth();
@@ -135,7 +44,7 @@ export default function App() {
     <ToastProvider>
       <AuthProvider>
         <BrowserRouter>
-          <div className="min-h-dvh bg-gray-50 font-sans text-gray-900 flex flex-col">
+          <div className="min-h-dvh bg-gray-50 font-sans text-gray-900 flex flex-col overflow-x-hidden">
             <Navbar />
             <main className="flex-1 flex flex-col">
               <Routes>

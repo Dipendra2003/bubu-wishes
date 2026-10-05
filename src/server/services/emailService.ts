@@ -547,7 +547,9 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: process.env.FROM_EMAIL || "BubuWish <onboarding@resend.dev>",
+          from: (process.env.FROM_EMAIL && !process.env.FROM_EMAIL.includes('@gmail.com') && !process.env.FROM_EMAIL.includes('@yahoo.')) 
+            ? process.env.FROM_EMAIL 
+            : "BubuWish <onboarding@resend.dev>",
           to: [to],
           subject,
           html,

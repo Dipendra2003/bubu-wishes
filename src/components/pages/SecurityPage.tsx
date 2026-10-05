@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../App';
+import { useAuth } from '../../contexts/AuthContext';
 import { Shield, Activity, Monitor, LogOut, AlertTriangle, Clock, MapPin, Smartphone, CheckCircle, XCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useToast } from '../ui/ToastProvider';

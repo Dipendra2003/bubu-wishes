@@ -1,9 +1,10 @@
 import React from 'react';
 import StaticPage from './StaticPage';
-import { Heart, Sparkles, Smile, MessageCircleHeart, Users, Palette, Shield, Zap, ArrowRight } from 'lucide-react';
+import { Heart, Sparkles, Smile, MessageCircleHeart, Users, Palette, Shield, Zap, ArrowRight, Github, Linkedin, Globe, Code, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { BubuDuduLove } from '../ThemeGraphics';
+import { useAuth } from '../../contexts/AuthContext';
 
 const features = [
   { icon: <Heart className="w-7 h-7" />, title: "Heartfelt Themes", desc: "From custom birthday parties to sleepy bedside cuddles, our Bubu & Dudu themes bring your feelings to life.", gradient: "from-pink-500 to-rose-500", bg: "bg-pink-50" },
@@ -20,6 +21,8 @@ const stats = [
 ];
 
 export default function AboutPage() {
+  const { user } = useAuth();
+  
   return (
     <StaticPage title="About BubuWish" subtitle="The cutest way to send greeting cards to your favorite people. Creating magic in every message.">
 
@@ -69,10 +72,13 @@ export default function AboutPage() {
             </div>
             <h3 className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900 mb-4 sm:mb-6 font-display leading-tight">The Story Behind BubuWish</h3>
             <p className="text-gray-600 leading-relaxed text-sm sm:text-base mb-4">
-              BubuWish was created with the idea that the moments leading up to opening a gift are just as exciting as the gift itself. We noticed that in the digital age, sending a greeting card often felt hollow — just a link you click and glance at for 2 seconds.
+              BubuWish started with a simple realization: in an era of instant messaging, the art of giving a greeting card had lost its spark. We noticed that digital e-cards often felt hollow—just a quick link you click, glance at for two seconds, and forget. It lacked the anticipation, the joy of unwrapping, and the heartfelt sentiment of holding something special.
+            </p>
+            <p className="text-gray-600 leading-relaxed text-sm sm:text-base mb-4">
+              Inspired by the heartwarming dynamic of Bubu (the energetic, loving bear) and Dudu (the calm, sleepy panda), we set out to build a platform that bridges the gap between physical touch and digital convenience. Whether it's a long-distance relationship, a birthday celebration across oceans, or just a random act of love, we wanted to recreate the magic of the "unboxing" experience.
             </p>
             <p className="text-gray-600 leading-relaxed text-sm sm:text-base">
-              We wanted to recreate that magical feeling of unwrapping, solving a mystery, and finally seeing the surprise inside — all in a beautiful digital format. By combining adorable Bubu & Dudu illustrations, 3D interactive elements, and AI magic, BubuWish was born.
+              By combining adorable, relatable illustrations with highly interactive 3D elements, lock puzzles, and our Gemini-powered AI Magic Write, BubuWish was born. Today, we are proud to help thousands of people turn their simple "Happy Birthday" texts into unforgettable, digital keepsakes that their loved ones can revisit whenever they need a smile.
             </p>
           </div>
           <div className="lg:w-72 flex items-center justify-center p-6 sm:p-8">
@@ -122,6 +128,53 @@ export default function AboutPage() {
         </div>
       </div>
 
+      {/* Developer Section */}
+      <motion.div
+        className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm overflow-hidden mb-12 sm:mb-16 relative"
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6 }}
+      >
+        <div className="absolute top-0 right-0 w-full h-32 bg-linear-to-r from-blue-50 via-indigo-50 to-purple-50"></div>
+        
+        <div className="relative px-6 sm:px-10 pb-10 pt-16 sm:pt-20">
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-10">
+            {/* Avatar / Photo Placeholder */}
+            <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-white shadow-xl overflow-hidden bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 -mt-10 sm:-mt-12 z-10">
+              <img src="/developer.jpg" alt="Dipendra Kumar" className="w-full h-full object-cover" />
+            </div>
+
+            <div className="flex-1 text-center md:text-left z-10">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold mb-3">
+                <Code className="w-3 h-3" /> Meet the Developer
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-black text-gray-900 mb-2 font-display">Dipendra Kumar</h3>
+              <p className="text-indigo-600 font-bold text-sm sm:text-base mb-4">Full Stack Engineer & Creative Builder</p>
+              
+              <p className="text-gray-600 leading-relaxed text-sm sm:text-base mb-6 max-w-2xl mx-auto md:mx-0">
+                Hi! I built BubuWish because I wanted to combine my passion for interactive 3D web experiences with something genuinely meaningful. I believe software should bring people closer together. When I'm not coding, I'm usually exploring new frontend frameworks, tinkering with 3D graphics, or drinking way too much coffee.
+              </p>
+
+              <div className="flex items-center justify-center md:justify-start gap-4">
+                <a href="https://github.com/Dipendra2003/" target="_blank" rel="noopener noreferrer" title="GitHub" className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-600 hover:bg-gray-900 hover:text-white hover:scale-110 transition-all shadow-sm">
+                  <Github className="w-5 h-5" />
+                </a>
+                <a href="https://www.linkedin.com/in/dipendra-kumar-b077b9286/" target="_blank" rel="noopener noreferrer" title="LinkedIn" className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-600 hover:text-white hover:scale-110 transition-all shadow-sm">
+                  <Linkedin className="w-5 h-5" />
+                </a>
+                <a href="https://portfolio-dipendra.vercel.app/" target="_blank" rel="noopener noreferrer" title="Portfolio Website" className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 hover:bg-emerald-600 hover:text-white hover:scale-110 transition-all shadow-sm">
+                  <Globe className="w-5 h-5" />
+                </a>
+                <a href="mailto:dipendrak299@gmail.com" title="Email Me" className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-600 hover:bg-rose-600 hover:text-white hover:scale-110 transition-all shadow-sm">
+                  <Mail className="w-5 h-5" />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
       {/* CTA */}
       <motion.div
         className="bg-linear-to-br from-pink-500 via-rose-500 to-pink-600 rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center text-white relative overflow-hidden"
@@ -134,8 +187,8 @@ export default function AboutPage() {
         <div className="relative z-10">
           <h3 className="text-xl sm:text-2xl lg:text-3xl font-black mb-3 font-display">Start Spreading Joy Today</h3>
           <p className="text-pink-100 font-medium mb-6 sm:mb-8 max-w-lg mx-auto text-sm sm:text-base">Ready to create your first magical greeting card? It's free, fun, and takes less than a minute.</p>
-          <Link to="/signup" className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-white text-pink-600 font-black rounded-full shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 text-sm sm:text-base">
-            Create A Free Card <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+          <Link to={user ? (user.role === 'admin' ? '/admin' : '/dashboard') : '/signup'} className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-white text-pink-600 font-black rounded-full shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 text-sm sm:text-base">
+            {user ? "Go To Dashboard" : "Create A Free Card"} <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
           </Link>
         </div>
       </motion.div>

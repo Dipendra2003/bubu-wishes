@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../App';
+import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './ui/ToastProvider';
 import { Bell, BellOff, Clock, Calendar, Mail, Save, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { fetchWithCsrf } from '../hooks/useCsrf';

@@ -4,7 +4,7 @@ import { MessageCircleHeart, Users, Lock, Share, UserPlus, LogIn, ChevronRight, 
 import { motion, useScroll, useTransform } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { BubuDuduParty, BubuDuduLove, BubuDuduValentine, BubuDuduSleepy } from '../ThemeGraphics';
-import { useAuth } from '../../App';
+import { useAuth } from '../../contexts/AuthContext';
 import BubuDuduRunningAnimation from '../BubuDuduRunningAnimation';
 
 export default function LandingPage() {

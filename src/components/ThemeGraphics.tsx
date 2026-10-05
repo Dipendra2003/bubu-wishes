@@ -43,6 +43,34 @@ export const ThemeColors = {
     cardInside: 'bg-[#f0fdf4]',
     text: 'text-emerald-900',
     accent: 'bg-emerald-500',
+  },
+  romantic: {
+    bg: 'bg-pink-50',
+    cardOutside: 'bg-linear-to-br from-pink-100 to-fuchsia-200',
+    cardInside: 'bg-[#fdf2f8]',
+    text: 'text-fuchsia-900',
+    accent: 'bg-fuchsia-400',
+  },
+  night: {
+    bg: 'bg-slate-900',
+    cardOutside: 'bg-linear-to-br from-slate-800 to-indigo-900',
+    cardInside: 'bg-[#0f172a]',
+    text: 'text-slate-100',
+    accent: 'bg-indigo-400',
+  },
+  galaxy: {
+    bg: 'bg-purple-900',
+    cardOutside: 'bg-linear-to-br from-violet-800 to-fuchsia-900',
+    cardInside: 'bg-[#2e1065]',
+    text: 'text-purple-100',
+    accent: 'bg-fuchsia-400',
+  },
+  forest: {
+    bg: 'bg-green-50',
+    cardOutside: 'bg-linear-to-br from-green-100 to-emerald-200',
+    cardInside: 'bg-[#f0fdf4]',
+    text: 'text-green-900',
+    accent: 'bg-green-500',
   }
 };
 
@@ -622,6 +650,154 @@ export const BubuDuduChristmas = () => (
       </g>
     </svg>
 );
+
+export const BubuDuduRomantic = () => (
+    <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-2xl pb-4 overflow-visible">
+      <defs>
+        <filter id="clay-3d-rom" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="1" dy="4" stdDeviation="3" floodColor="#000" floodOpacity="0.15" result="shadow"/>
+          <feComponentTransfer in="SourceAlpha" result="alpha"/>
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feOffset dx="-2.5" dy="-2.5" result="offsetBlur"/>
+          <feComposite in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff"/>
+          <feFlood floodColor="white" floodOpacity="0.75"/>
+          <feComposite in2="shadowDiff" operator="in"/>
+          <feComposite in2="SourceGraphic" operator="over" result="highlight"/>
+        </filter>
+      </defs>
+      <style>{`
+        .rom-anim-float { animation: rom-float 3s ease-in-out infinite; }
+        @keyframes rom-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+      `}</style>
+      <g className="rom-anim-float" filter="url(#clay-3d-rom)">
+        <g transform="translate(50, 50) scale(0.9) rotate(5)">
+          <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="closed" blush={true} />
+        </g>
+        <g transform="translate(90, 50) scale(0.9) rotate(-5)">
+          <BearFace color="#d4a373" ears="#a98467" eyeType="closed" blush={true} />
+        </g>
+        <path d="M 85 110 Q 100 110 100 125 Q 100 140 85 140 Q 70 140 70 125 Q 70 110 85 110" fill="#f43f5e" />
+      </g>
+    </svg>
+);
+
+export const BubuDuduNight = () => (
+    <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-2xl pb-4 overflow-visible">
+      <defs>
+        <filter id="clay-3d-night" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="1" dy="4" stdDeviation="3" floodColor="#000" floodOpacity="0.3" result="shadow"/>
+          <feComponentTransfer in="SourceAlpha" result="alpha"/>
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feOffset dx="-2.5" dy="-2.5" result="offsetBlur"/>
+          <feComposite in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff"/>
+          <feFlood floodColor="white" floodOpacity="0.5"/>
+          <feComposite in2="shadowDiff" operator="in"/>
+          <feComposite in2="SourceGraphic" operator="over" result="highlight"/>
+        </filter>
+      </defs>
+      <style>{`
+        .night-anim-float { animation: night-float 4s ease-in-out infinite; }
+        @keyframes night-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+      `}</style>
+      <g filter="url(#clay-3d-night)">
+        <path d="M 150 40 A 20 20 0 1 0 170 20 A 25 25 0 0 1 150 40 Z" fill="#fde047" />
+        <circle cx="40" cy="30" r="2" fill="#fff" opacity="0.8" />
+        <circle cx="80" cy="20" r="1.5" fill="#fff" opacity="0.6" />
+        <circle cx="120" cy="40" r="2" fill="#fff" opacity="0.9" />
+      </g>
+      <g className="night-anim-float" filter="url(#clay-3d-night)">
+        <g transform="translate(45, 60) scale(0.85)">
+          <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="sleepy" blush={true} />
+        </g>
+        <g transform="translate(95, 60) scale(0.85)">
+          <BearFace color="#d4a373" ears="#a98467" eyeType="sleepy" blush={true} />
+        </g>
+      </g>
+    </svg>
+);
+
+export const BubuDuduGalaxy = () => (
+    <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-2xl pb-4 overflow-visible">
+      <defs>
+        <filter id="clay-3d-galaxy" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="1" dy="4" stdDeviation="3" floodColor="#000" floodOpacity="0.4" result="shadow"/>
+          <feComponentTransfer in="SourceAlpha" result="alpha"/>
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feOffset dx="-2.5" dy="-2.5" result="offsetBlur"/>
+          <feComposite in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff"/>
+          <feFlood floodColor="white" floodOpacity="0.6"/>
+          <feComposite in2="shadowDiff" operator="in"/>
+          <feComposite in2="SourceGraphic" operator="over" result="highlight"/>
+        </filter>
+      </defs>
+      <style>{`
+        .galaxy-anim-spin { animation: galaxy-spin 10s linear infinite; transform-origin: center; }
+        .galaxy-anim-float { animation: galaxy-float 3s ease-in-out infinite; }
+        @keyframes galaxy-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes galaxy-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+      `}</style>
+      <g filter="url(#clay-3d-galaxy)">
+        <ellipse cx="100" cy="80" rx="70" ry="20" fill="none" stroke="#c084fc" strokeWidth="4" transform="rotate(-15 100 80)" />
+        <circle cx="160" cy="30" r="10" fill="#f472b6" />
+        <circle cx="30" cy="110" r="15" fill="#38bdf8" />
+      </g>
+      <g className="galaxy-anim-float" filter="url(#clay-3d-galaxy)">
+        <g transform="translate(50, 40) scale(0.8)">
+          <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="open" blush={true} />
+          {/* Astronaut helmet */}
+          <circle cx="50" cy="45" r="45" fill="none" stroke="#fff" strokeWidth="3" opacity="0.6" />
+        </g>
+        <g transform="translate(100, 50) scale(0.8)">
+          <BearFace color="#d4a373" ears="#a98467" eyeType="open" blush={true} />
+          <circle cx="50" cy="45" r="45" fill="none" stroke="#fff" strokeWidth="3" opacity="0.6" />
+        </g>
+      </g>
+    </svg>
+);
+
+export const BubuDuduForest = () => (
+    <svg viewBox="0 0 200 150" className="w-full h-full drop-shadow-2xl pb-4 overflow-visible">
+      <defs>
+        <filter id="clay-3d-forest" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="1" dy="4" stdDeviation="3" floodColor="#000" floodOpacity="0.15" result="shadow"/>
+          <feComponentTransfer in="SourceAlpha" result="alpha"/>
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feOffset dx="-2.5" dy="-2.5" result="offsetBlur"/>
+          <feComposite in2="alpha" operator="arithmetic" k2="-1" k3="1" result="shadowDiff"/>
+          <feFlood floodColor="white" floodOpacity="0.75"/>
+          <feComposite in2="shadowDiff" operator="in"/>
+          <feComposite in2="SourceGraphic" operator="over" result="highlight"/>
+        </filter>
+      </defs>
+      <style>{`
+        .forest-anim-float { animation: forest-float 3.5s ease-in-out infinite; }
+        @keyframes forest-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+      `}</style>
+      <g filter="url(#clay-3d-forest)">
+        {/* Trees */}
+        <polygon points="30,40 10,80 50,80" fill="#22c55e" />
+        <rect x="25" y="80" width="10" height="15" fill="#78350f" />
+        <polygon points="170,30 145,85 195,85" fill="#16a34a" />
+        <rect x="165" y="85" width="10" height="15" fill="#78350f" />
+      </g>
+      <g className="forest-anim-float" filter="url(#clay-3d-forest)">
+        <g transform="translate(45, 55) scale(0.9)">
+          <BearFace color="#f8f9fa" ears="#e9ecef" eyeType="open" blush={true} />
+          {/* Flower on head */}
+          <circle cx="50" cy="-5" r="5" fill="#fcd34d" />
+          <circle cx="43" cy="-5" r="4" fill="#f472b6" />
+          <circle cx="57" cy="-5" r="4" fill="#f472b6" />
+          <circle cx="50" cy="-12" r="4" fill="#f472b6" />
+          <circle cx="50" cy="2" r="4" fill="#f472b6" />
+        </g>
+        <g transform="translate(95, 55) scale(0.9)">
+          <BearFace color="#d4a373" ears="#a98467" eyeType="open" blush={true} />
+          {/* Leaf on head */}
+          <path d="M 50 -5 Q 60 -15 65 -5 Q 55 5 50 -5" fill="#4ade80" />
+        </g>
+      </g>
+    </svg>
+);
 export const ThemeIcon = ({ theme }: { theme: ThemeType }) => {
   switch (theme) {
     case 'party': return <BubuDuduParty />;
@@ -630,6 +806,10 @@ export const ThemeIcon = ({ theme }: { theme: ThemeType }) => {
     case 'valentine': return <BubuDuduValentine />;
     case 'newyear': return <BubuDuduNewYear />;
     case 'christmas': return <BubuDuduChristmas />;
+    case 'romantic': return <BubuDuduRomantic />;
+    case 'night': return <BubuDuduNight />;
+    case 'galaxy': return <BubuDuduGalaxy />;
+    case 'forest': return <BubuDuduForest />;
     default: return <BubuDuduParty />;
   }
 }

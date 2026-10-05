@@ -21,10 +21,11 @@ wishesRouter.post("/", async (req: any, res) => {
                       data.recordedAudio || 
                       (data.customPhotoUrls && data.customPhotoUrls.length > 0) || 
                       data.customPhotoUrl ||
-                      data.customVideoUrl;
+                      data.customVideoUrl ||
+                      (data.surprisePhoto && data.surprisePhoto !== 'none');
     
     if (!hasContent) {
-        return res.status(400).json({ error: "Message or media is required" });
+        return res.status(400).json({ error: "Please add a message, a photo, or choose a surprise illustration to save your card!" });
     }
     
     if (JSON.stringify(data).length > 200 * 1024) { // 200KB limit

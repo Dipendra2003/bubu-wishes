@@ -533,17 +533,22 @@ authRouter.post("/resend-verification-public", async (req: any, res) => {
 });
 
 authRouter.post("/forgot-password", async (req: any, res) => {
-  const { email } = req.body;
-  const userRecords = await db.select().from(users).where(eq(users.email, email)).limit(1);
-  if (userRecords.length > 0) {
-    const otp = await generateOTP(userRecords[0].id, 'reset_password');
-    await sendEmail(
-      email, 
-      "🔑 Reset Your BubuWish Password", 
-      getPasswordResetEmailHtml(otp, userRecords[0].name)
-    );
+  try {
+    const { email } = req.body;
+    const userRecords = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    if (userRecords.length > 0) {
+      const otp = await generateOTP(userRecords[0].id, 'reset_password');
+      await sendEmail(
+        email, 
+        "🔑 Reset Your BubuWish Password", 
+        getPasswordResetEmailHtml(otp, userRecords[0].name)
+      );
+    }
+    res.json({ success: true, message: "If an account exists, an email was sent." });
+  } catch (error: any) {
+    console.error("Forgot password error:", error);
+    res.status(500).json({ error: "Failed to send email. Please try again later." });
   }
-  res.json({ success: true, message: "If an account exists, an email was sent." });
 });
 
 authRouter.post("/reset-password", async (req: any, res) => {

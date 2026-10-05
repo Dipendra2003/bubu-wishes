@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../App';
+import { useAuth } from '../../contexts/AuthContext';
 import { MessageCircleHeart, LogIn, Loader2, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useToast } from '../ui/ToastProvider';

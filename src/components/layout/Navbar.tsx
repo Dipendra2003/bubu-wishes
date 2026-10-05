@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../App';
-import { MessageCircleHeart, LogOut, LayoutDashboard, User, Menu, X } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { MessageCircleHeart, LogOut, LayoutDashboard, User, Menu, X, Info, Mail } from 'lucide-react';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -40,47 +40,55 @@ export default function Navbar() {
               </Link>
             </div>
             
-            <div className="flex items-center">
-              {user && (
-                <>
-                  {/* Desktop Navigation */}
-                  <div className="hidden md:flex items-center gap-4">
-                    <span className="text-sm font-bold text-gray-600">Hello, {user.name}</span>
-                    <span className="text-xs font-bold px-2 py-1 rounded-full bg-pink-100 text-pink-700 uppercase tracking-widest">{user.role}</span>
-                    <Link
-                      to={user.role === 'admin' ? '/admin' : '/dashboard'}
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-500 hover:text-pink-600 hover:bg-pink-50 rounded-full transition"
-                    >
-                      <LayoutDashboard className="w-4 h-4" />
-                      <span>Dashboard</span>
-                    </Link>
-                    <Link
-                      to="/profile"
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-500 hover:text-pink-600 hover:bg-pink-50 rounded-full transition"
-                    >
-                      <User className="w-4 h-4" />
-                      <span>Profile</span>
-                    </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-500 hover:text-pink-600 hover:bg-pink-50 rounded-full transition"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span>Logout</span>
-                    </button>
-                  </div>
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* Desktop Public Navigation */}
+              <div className="hidden md:flex items-center">
+                <Link to="/about" className="px-4 py-2 text-sm font-bold text-gray-500 hover:text-pink-600 transition">About</Link>
+                <Link to="/contact" className="px-4 py-2 text-sm font-bold text-gray-500 hover:text-pink-600 transition">Contact</Link>
+              </div>
 
-                  {/* Mobile Menu Toggle */}
-                  <div className="md:hidden flex items-center">
-                    <button
-                      onClick={() => setIsMobileMenuOpen(true)}
-                      className="p-2 rounded-md text-gray-500 hover:text-pink-600 hover:bg-pink-50 transition"
-                    >
-                      <Menu className="w-6 h-6" />
-                    </button>
-                  </div>
-                </>
+              {user ? (
+                <div className="hidden md:flex items-center gap-2">
+                  {/* Desktop User Navigation */}
+                  <span className="text-sm font-bold text-gray-600 px-2 border-l border-gray-200">Hello, {user.name}</span>
+                  <Link
+                    to={user.role === 'admin' ? '/admin' : '/dashboard'}
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-gray-500 hover:text-pink-600 hover:bg-pink-50 rounded-full transition"
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                    <span>Dashboard</span>
+                  </Link>
+                  <Link
+                    to="/profile"
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-gray-500 hover:text-pink-600 hover:bg-pink-50 rounded-full transition"
+                  >
+                    <User className="w-4 h-4" />
+                    <span>Profile</span>
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-gray-500 hover:text-pink-600 hover:bg-pink-50 rounded-full transition"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="hidden md:flex items-center gap-2 border-l border-gray-200 pl-4">
+                  <Link to="/login" className="px-4 py-2 text-sm font-bold text-gray-500 hover:text-pink-600 transition">Login</Link>
+                  <Link to="/signup" className="px-4 py-2 text-sm font-bold text-white bg-pink-500 hover:bg-pink-600 rounded-full transition shadow-sm">Sign Up</Link>
+                </div>
               )}
+
+              {/* Mobile Menu Toggle (Always visible on mobile) */}
+              <div className="md:hidden flex items-center">
+                <button
+                  onClick={() => setIsMobileMenuOpen(true)}
+                  className="p-2 rounded-md text-gray-500 hover:text-pink-600 hover:bg-pink-50 transition"
+                >
+                  <Menu className="w-6 h-6" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -112,44 +120,88 @@ export default function Navbar() {
           </button>
         </div>
         
-        {user && (
-          <div className="px-6 py-4 flex flex-col gap-6 flex-1">
+        <div className="px-6 py-4 flex flex-col gap-6 flex-1">
+          {user && (
             <div className="flex flex-col gap-2 border-b border-pink-50 pb-6">
               <span className="text-sm font-bold text-gray-500">Logged in as</span>
               <span className="text-lg font-black text-gray-800">{user.name}</span>
-              <span className="text-xs font-bold px-2 py-1 rounded-full bg-pink-100 text-pink-700 uppercase tracking-widest self-start">
-                {user.role}
-              </span>
             </div>
-            
-            <nav className="flex flex-col gap-2">
-              <Link
-                to={user.role === 'admin' ? '/admin' : '/dashboard'}
-                className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-xl transition"
-              >
-                <LayoutDashboard className="w-5 h-5" />
-                <span>Dashboard</span>
-              </Link>
-              <Link
-                to="/profile"
-                className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-xl transition"
-              >
-                <User className="w-5 h-5" />
-                <span>Profile</span>
-              </Link>
-            </nav>
+          )}
+          
+          <nav className="flex flex-col gap-2">
+            <Link
+              to="/about"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-xl transition"
+            >
+              <Info className="w-5 h-5" />
+              <span>About</span>
+            </Link>
+            <Link
+              to="/contact"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-xl transition"
+            >
+              <Mail className="w-5 h-5" />
+              <span>Contact</span>
+            </Link>
 
+            {user ? (
+              <>
+                <Link
+                  to={user.role === 'admin' ? '/admin' : '/dashboard'}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-xl transition"
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  <span>Dashboard</span>
+                </Link>
+                <Link
+                  to="/profile"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-xl transition"
+                >
+                  <User className="w-5 h-5" />
+                  <span>Profile</span>
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="mt-4 border-t border-pink-50 pt-6 flex flex-col gap-3">
+                  <Link
+                    to="/login"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center justify-center w-full px-4 py-3 text-sm font-bold text-gray-600 border-2 border-gray-200 hover:border-pink-300 hover:text-pink-600 rounded-xl transition"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/signup"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center justify-center w-full px-4 py-3 text-sm font-bold text-white bg-pink-500 hover:bg-pink-600 rounded-xl transition shadow-sm"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              </>
+            )}
+          </nav>
+
+          {user && (
             <div className="mt-auto border-t border-pink-50 pt-6">
               <button
-                onClick={handleLogout}
+                onClick={() => {
+                  handleLogout();
+                  setIsMobileMenuOpen(false);
+                }}
                 className="flex items-center gap-3 px-4 py-3 w-full text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl transition"
               >
                 <LogOut className="w-5 h-5" />
                 <span>Logout</span>
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </>
   );

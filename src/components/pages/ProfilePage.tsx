@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../App';
+import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../ui/ToastProvider';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';

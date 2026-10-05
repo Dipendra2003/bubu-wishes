@@ -11,10 +11,37 @@ const contactMethods = [
 
 export default function ContactPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    subject: 'General Question',
+    message: ''
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitted(true);
+    setIsSubmitting(true);
+    setError('');
+    
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      
+      if (!response.ok) throw new Error('Failed to send message');
+      
+      setIsSubmitted(true);
+      setFormData({ name: '', email: '', subject: 'General Question', message: '' });
+    } catch (err) {
+      setError('Something went wrong. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -110,6 +137,8 @@ export default function ContactPage() {
                       type="text" 
                       id="contact-name" 
                       required
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
                       className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all text-sm sm:text-base"
                       placeholder="John Doe"
                     />
@@ -120,6 +149,8 @@ export default function ContactPage() {
                       type="email" 
                       id="contact-email" 
                       required
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
                       className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all text-sm sm:text-base"
                       placeholder="john@example.com"
                     />
@@ -128,7 +159,9 @@ export default function ContactPage() {
                 <div>
                   <label htmlFor="contact-subject" className="block text-sm font-bold text-gray-700 mb-1.5">Subject</label>
                   <select 
-                    id="contact-subject" 
+                    id="contact-subject"
+                    value={formData.subject}
+                    onChange={(e) => setFormData({...formData, subject: e.target.value})} 
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all text-sm sm:text-base"
                   >
                     <option>General Question</option>
@@ -145,15 +178,31 @@ export default function ContactPage() {
                     id="contact-message" 
                     required
                     rows={5}
+                    value={formData.message}
+                    onChange={(e) => setFormData({...formData, message: e.target.value})}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all resize-none text-sm sm:text-base"
                     placeholder="How can we help you?"
                   ></textarea>
                 </div>
+                
+                {error && (
+                  <div className="p-3 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100">
+                    {error}
+                  </div>
+                )}
+
                 <button 
                   type="submit"
-                  className="w-full py-3.5 bg-linear-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-black rounded-xl shadow-lg shadow-pink-200/50 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm sm:text-base"
+                  disabled={isSubmitting}
+                  className="w-full py-3.5 bg-linear-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 disabled:opacity-70 text-white font-black rounded-xl shadow-lg shadow-pink-200/50 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm sm:text-base"
                 >
-                  <Send className="w-4 h-4" /> Send Message
+                  {isSubmitting ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" /> Send Message
+                    </>
+                  )}
                 </button>
               </form>
             )}

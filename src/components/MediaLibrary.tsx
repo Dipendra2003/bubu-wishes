@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Upload, Search, Image as ImageIcon, Music, Trash2, Edit2, Check, X as XIcon, Play, Pause, Loader2, Download, Calendar, HardDrive, Video } from 'lucide-react';
-import { useAuth } from '../App';
+import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './ui/ToastProvider';
 import { cn } from '../lib/utils';
 import { fetchWithCsrf } from '../hooks/useCsrf';

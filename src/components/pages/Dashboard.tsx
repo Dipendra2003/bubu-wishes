@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../App';
+import { useAuth } from '../../contexts/AuthContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CardEditor } from '../CardEditor';
 import { Card3D } from '../Card3D';

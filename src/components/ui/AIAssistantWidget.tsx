@@ -4,7 +4,7 @@ import { MessageCircleHeart, X, Send, Sparkles, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import ReactMarkdown from 'react-markdown';
-import { useAuth } from '../../App';
+import { useAuth } from '../../contexts/AuthContext';
 import { fetchWithCsrf } from '../../hooks/useCsrf';
 
 export default function AIAssistantWidget() {

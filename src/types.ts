@@ -26,7 +26,7 @@ export interface Wish {
 
 export type ThemeType = 'party' | 'romantic' | 'night' | 'galaxy' | 'forest' | 'love' | 'sleepy' | 'valentine' | 'newyear' | 'christmas';
 export type MusicType = 'happy_birthday' | 'romantic' | 'funny' | 'custom' | 'cute_bounce' | 'mellow' | 'none';
-export type PhotoType = 'none' | 'custom' | 'cake' | 'hug' | 'stargazing' | 'video';
+export type PhotoType = 'none' | 'custom' | 'cake' | 'hug' | 'stargazing' | 'video' | 'search';
 export type FloatingEffectType = 'none' | 'hearts' | 'stars' | 'confetti' | 'balloons' | 'snow' | 'pizza';
 export type PuzzleLanguage = 'english' | 'nepali' | 'hindi' | 'hinglish';
 export type FontType = 'sans' | 'handwriting' | 'dancing' | 'pacifico' | 'serif';
